@@ -16,6 +16,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import AddStudentDialog from './AddStudentDialog';
 
 // CONSTANTS
 const STATUS_MAP: Record<string, { label: string; color: string }> = {
@@ -49,6 +50,7 @@ export default function RegistryTable({ initialData = [] }: RegistryTableProps) 
     const [loading, setLoading] = useState(false);
     const [excelFiles, setExcelFiles] = useState<string[]>([]);
     const [selectedFile, setSelectedFile] = useState<string>('');
+    const [showAddStudent, setShowAddStudent] = useState(false); // New State
 
     // Edit State
     const [selectedUser, setSelectedUser] = useState<any | null>(null);
@@ -461,6 +463,18 @@ export default function RegistryTable({ initialData = [] }: RegistryTableProps) 
 
                             <div className="h-8 w-[1px] bg-slate-200 hidden md:block"></div>
 
+                            <Button
+                                className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-none h-8 font-bold shadow-sm"
+                                size="sm"
+                                onClick={() => setShowAddStudent(true)}
+                            >
+                                <UserIcon className="w-4 h-4 mr-2" />
+                                เพิ่มนักเรียนใหม่
+                            </Button>
+
+
+                            <div className="h-8 w-[1px] bg-slate-200 hidden md:block"></div>
+
                             <div className="relative">
                                 <input
                                     type="file"
@@ -702,6 +716,12 @@ export default function RegistryTable({ initialData = [] }: RegistryTableProps) 
                     )}
                 </DialogContent>
             </Dialog>
-        </div>
+
+            <AddStudentDialog
+                open={showAddStudent}
+                onOpenChange={setShowAddStudent}
+                onSuccess={fetchRegistry}
+            />
+        </div >
     );
 }
