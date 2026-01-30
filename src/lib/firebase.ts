@@ -12,16 +12,29 @@ const firebaseConfig = {
     databaseURL: process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL || 'https://eq-app-72f5b-default-rtdb.asia-southeast1.firebasedatabase.app/',
 };
 
-if (!firebaseConfig.apiKey || firebaseConfig.apiKey === 'your-api-key') {
-    console.error(
-        'Firebase API Key is missing or invalid. Please check your .env.local file.'
-    );
+// Initialize safely to prevent build errors when env vars are missing
+let app: any;
+let auth: any;
+let db: any;
+let googleProvider: any;
+
+if (typeof window !== 'undefined' && (!firebaseConfig.apiKey || firebaseConfig.apiKey === 'your-api-key')) {
+    console.error('Firebase API Key is missing. Check .env.local');
 }
 
-const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
-const auth = getAuth(app);
-const db = getDatabase(app);
-const googleProvider = new GoogleAuthProvider();
-googleProvider.addScope('https://www.googleapis.com/auth/drive.readonly');
+if (firebaseConfig.apiKey && firebaseConfig.apiKey !== 'your-api-key') {
+    app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+    auth = getAuth(app);
+    db = getDatabase(app);
+    googleProvider = new GoogleAuthProvider();
+    googleProvider.addScope('https://www.googleapis.com/auth/drive.readonly');
+} else {
+    // Return mock or null objects during build/SSR if config is missing
+    // This allows the app to build even without valid keys (e.g. on CI)
+    app = null;
+    auth = {} as any;
+    db = {} as any;
+    googleProvider = {} as any;
+}
 
 export { auth, db, googleProvider };
