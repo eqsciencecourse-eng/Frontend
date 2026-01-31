@@ -26,6 +26,20 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  async headers() {
+    return [
+      {
+        source: '/:path*',
+        headers: [
+          {
+            key: 'Cross-Origin-Opener-Policy',
+            value: 'same-origin-allow-popups',
+          },
+          // Optional: If you need to embed this in iframes, adjust Content-Security-Policy
+        ],
+      },
+    ];
+  },
 };
 
 export default withPWA(nextConfig);
