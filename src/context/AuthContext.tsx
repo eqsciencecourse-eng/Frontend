@@ -26,6 +26,7 @@ export interface AuthUser {
     educationLevel?: string;
     nickname?: string; // [NEW]
     lineUserId?: string; // [NEW] Line Integration
+    studentEvaluations?: any[]; // [NEW] Evaluation System
     getIdToken: () => Promise<string | undefined>;
 }
 

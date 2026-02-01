@@ -17,6 +17,7 @@ import DashboardNavbar from '@/components/dashboard/DashboardNavbar';
 import PDFReportView from '@/components/dashboard/student/PDFReportView';
 import { API_ENDPOINTS } from '@/lib/api-config';
 import AttendanceHistoryTable from '@/components/dashboard/student/AttendanceHistoryTable';
+import StudentEvaluationChart from '@/components/dashboard/student/StudentEvaluationChart';
 
 const OfficialReportDownloadModal = dynamic(() => import('@/components/dashboard/student/OfficialReportDownloadModal'), {
     loading: () => null,
@@ -59,7 +60,12 @@ export default function StudentDashboard() {
             ]);
 
             if (isMounted.current) {
-                if (gradesRes.ok) setGrades(await gradesRes.json());
+                let gradesData: any[] = [];
+                if (gradesRes.ok) {
+                    gradesData = await gradesRes.json();
+                    setGrades(gradesData);
+                }
+
                 if (filesRes.ok) setFiles(await filesRes.json());
                 if (attendanceRes.ok) setAttendanceHistory(await attendanceRes.json());
 
@@ -68,7 +74,7 @@ export default function StudentDashboard() {
                     setUserProfile(profile);
 
                     // Determine Subjects
-                    const gradeSubjects = Array.from(new Set(gradesRes.ok ? (await gradesRes.clone().json()).map((g: any) => g.subjectName || g.subject || g.className).filter(Boolean) : []));
+                    const gradeSubjects = Array.from(new Set(gradesData.map((g: any) => g.subjectName || g.subject || g.className).filter(Boolean)));
                     const subjectSources = [
                         gradeSubjects,
                         profile?.enrolledSubjects || [],
@@ -269,13 +275,13 @@ export default function StudentDashboard() {
                 {/* Tabs */}
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
                     <TabsList className="bg-white/70 backdrop-blur-md p-1.5 rounded-2xl border border-white/50 shadow-sm w-full flex justify-between gap-1 sticky top-20 z-30">
-                        {['overview', 'files', 'history'].map((tab) => (
+                        {['overview', 'files', 'evaluation', 'history'].map((tab) => (
                             <TabsTrigger
                                 key={tab}
                                 value={tab}
                                 className="flex-1 rounded-xl data-[state=active]:bg-white data-[state=active]:text-indigo-600 data-[state=active]:shadow-md text-slate-500 py-3 font-semibold transition-all duration-300 capitalize"
                             >
-                                {tab === 'overview' ? 'คอร์สเรียน' : tab === 'files' ? 'เกียรติบัตร' : 'ประวัติ'}
+                                {tab === 'overview' ? 'คอร์สเรียน' : tab === 'files' ? 'เกียรติบัตร' : tab === 'evaluation' ? 'การประเมิน' : 'ประวัติ'}
                             </TabsTrigger>
                         ))}
                         <TabsTrigger
@@ -382,6 +388,10 @@ export default function StudentDashboard() {
                                         </motion.div>
                                     ))}
                                 </div>
+                            </TabsContent>
+
+                            <TabsContent value="evaluation" className="pt-2">
+                                <StudentEvaluationChart studentId={user?.uid} />
                             </TabsContent>
 
                             <TabsContent value="history" className="pt-2">

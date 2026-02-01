@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { SchoolSearchInput } from '@/components/ui/SchoolSearchInput';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
-import { Loader2, CheckCircle2, User, Users, GraduationCap, Calendar, Lock, Key, Cpu, Wifi, BarChart3, Cat, Globe, Box, Terminal, Gamepad2, BookOpen, Settings, Edit2, Trash2, X, Plus, Save } from 'lucide-react';
+import { Loader2, CheckCircle2, User, Users, GraduationCap, Calendar, Lock, Key, Cpu, Wifi, BarChart3, Cat, Globe, Box, Terminal, Gamepad2, BookOpen, Settings, Edit2, Trash2, X, Plus, Save, School, Search } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
@@ -130,6 +130,9 @@ export default function CreateUser() {
     // [NEW] Confirmation Dialog State
     const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
     const [missingFields, setMissingFields] = useState<string[]>([]);
+
+    // [NEW] Manual School Input State
+    const [isManualSchoolInput, setIsManualSchoolInput] = useState(false);
 
 
     const [teachers, setTeachers] = useState<{ _id: string, displayName: string, email: string }[]>([]);
@@ -671,22 +674,54 @@ export default function CreateUser() {
                     <div className="space-y-2 col-span-1 md:col-span-2">
                         <Label className="font-semibold text-gray-700">โรงเรียน</Label>
                         <div className="flex gap-3 items-start">
-                            <div className="flex-1">
-                                <SchoolSearchInput
-                                    value={formData.school}
-                                    onSelect={(val) => handleSelectChange('school', val)}
-                                />
-                            </div>
+                            {isManualSchoolInput ? (
+                                <div className="flex-1 relative animate-in fade-in slide-in-from-left-2 duration-300">
+                                    <School className="absolute left-3 top-3 h-5 w-5 text-pink-500 z-10" />
+                                    <Input
+                                        placeholder="ระบุชื่อโรงเรียนเอง..."
+                                        value={formData.school === 'อื่นๆ' ? '' : formData.school}
+                                        onChange={(e) => handleSelectChange('school', e.target.value)}
+                                        className="pl-10 h-11 rounded-none border-pink-500 ring-1 ring-pink-500/20 bg-pink-50 text-pink-700 font-medium placeholder:text-pink-300"
+                                        autoFocus
+                                    />
+                                    <p className="text-xs text-pink-500 mt-1 flex items-center gap-1">
+                                        * กำลังระบุชื่อโรงเรียนด้วยตนเอง
+                                    </p>
+                                </div>
+                            ) : (
+                                <div className="flex-1">
+                                    <SchoolSearchInput
+                                        value={formData.school}
+                                        onSelect={(val) => handleSelectChange('school', val)}
+                                    />
+                                </div>
+                            )}
+
                             <Button
                                 type="button"
                                 variant="outline"
-                                onClick={() => handleSelectChange('school', 'อื่นๆ')}
-                                className={`h-11 px-6 rounded-none border transition-all ${formData.school === 'อื่นๆ'
-                                    ? 'bg-pink-500 border-pink-500 text-white'
+                                onClick={() => {
+                                    if (isManualSchoolInput) {
+                                        setIsManualSchoolInput(false);
+                                        handleSelectChange('school', ''); // Clear when going back to search
+                                    } else {
+                                        setIsManualSchoolInput(true);
+                                        handleSelectChange('school', ''); // Clear start
+                                    }
+                                }}
+                                className={`h-11 px-6 rounded-none border transition-all min-w-[120px] ${isManualSchoolInput
+                                    ? 'bg-slate-100 border-slate-300 text-slate-600 hover:bg-slate-200'
                                     : 'border-slate-200 hover:border-pink-500 hover:text-pink-500 bg-white'
                                     }`}
                             >
-                                อื่นๆ
+                                {isManualSchoolInput ? (
+                                    <>
+                                        <Search className="w-4 h-4 mr-2" />
+                                        ค้นหา
+                                    </>
+                                ) : (
+                                    'อื่นๆ'
+                                )}
                             </Button>
                         </div>
                     </div>

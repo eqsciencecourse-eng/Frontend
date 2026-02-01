@@ -1,7 +1,7 @@
 'use client';
 
-import { AreaChart, Area, Tooltip } from 'recharts';
-import { SafeResponsiveContainer } from '@/components/SafeResponsiveContainer';
+import { AreaChart, Area, Tooltip, ResponsiveContainer } from 'recharts';
+// SafeResponsiveContainer removed
 
 const data = [
     { name: 'Week 1', score: 65 },
@@ -16,8 +16,8 @@ const data = [
 
 export function HeroGraph() {
     return (
-        <div className="w-full h-full min-h-[160px]">
-            <SafeResponsiveContainer width="100%" height="100%">
+        <div className="h-[300px] w-full mt-8">
+            <ResponsiveContainer width="100%" height="100%">
                 <AreaChart
                     data={data}
                     margin={{
@@ -54,7 +54,7 @@ export function HeroGraph() {
                         fill="url(#colorScore)"
                     />
                 </AreaChart>
-            </SafeResponsiveContainer>
+            </ResponsiveContainer>
         </div>
     );
 }

@@ -56,6 +56,28 @@ export default function TeacherPermissionManagement({ users, onUpdateUser }: Tea
 
     const handleAssignTeacherToStudent = async (studentId: string, teacherId: string) => {
         if (!user) return;
+
+        // [FIX] Find student to update specific course details
+        const student = users.find(u => u._id === studentId);
+        if (!student) return;
+
+        const payload: any = { assignedTeacherId: teacherId };
+
+        // Check if student has registeredCourses and update the specific subject
+        if (student.registeredCourses && Array.isArray(student.registeredCourses) && viewingSubject) {
+            const updatedCourses = student.registeredCourses.map((c: any) => {
+                if (c.subject === viewingSubject.name) {
+                    return {
+                        ...c,
+                        teacherId: teacherId,
+                        teacherName: teachers.find((t: any) => t._id === teacherId)?.displayName || 'Unknown'
+                    };
+                }
+                return c;
+            });
+            payload.registeredCourses = updatedCourses;
+        }
+
         try {
             const token = await user.getIdToken();
             const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/users/${studentId}`, {
@@ -64,12 +86,12 @@ export default function TeacherPermissionManagement({ users, onUpdateUser }: Tea
                     'Content-Type': 'application/json',
                     Authorization: `Bearer ${token}`
                 },
-                body: JSON.stringify({ assignedTeacherId: teacherId })
+                body: JSON.stringify(payload)
             });
 
             if (res.ok) {
                 toast.success('บันทึกครูผู้สอนเรียบร้อยแล้ว');
-                onUpdateUser();
+                onUpdateUser(); // Refresh data
             } else {
                 toast.error('เกิดข้อผิดพลาดในการบันทึก');
             }
@@ -130,66 +152,75 @@ export default function TeacherPermissionManagement({ users, onUpdateUser }: Tea
 
     return (
         <div className="space-y-6">
-            <Card className="rounded-none shadow-sm border border-slate-200">
-                <CardHeader>
-                    <CardTitle className="text-xl font-bold text-slate-800">จัดการสิทธิ์และผู้รับผิดชอบ</CardTitle>
-                    <p className="text-sm text-slate-500">กำหนดครูประจำวิชาและผู้รับผิดชอบนักเรียนรายวิชา</p>
-                </CardHeader>
-                <CardContent className="p-0">
-                    <Table>
-                        <TableHeader>
-                            <TableRow className="bg-slate-50">
-                                <TableHead className="py-4 pl-6 w-[250px]">วิชา</TableHead>
-                                <TableHead className="py-4 w-[150px]">จำนวนนักเรียน</TableHead>
-                                <TableHead className="py-4 text-center">จัดการ</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {subjects.map((subject) => {
-                                const studentCount = countStudents(subject.name);
-                                return (
-                                    <TableRow key={subject._id} className="hover:bg-slate-50/50">
-                                        <TableCell className="font-bold text-slate-700 py-4 pl-6">
-                                            {subject.name}
-                                        </TableCell>
-                                        <TableCell>
-                                            <div className="flex items-center gap-2">
-                                                <Users className="w-4 h-4 text-slate-400" />
-                                                <span>{studentCount} คน</span>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="text-center">
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                className="border-indigo-200 text-indigo-700 hover:bg-indigo-50 rounded-none"
-                                                onClick={() => setViewingSubject(subject)}
-                                            >
-                                                <Shield className="w-4 h-4 mr-2" />
-                                                กำหนดสิทธิ์ครู
-                                            </Button>
-                                        </TableCell>
-                                    </TableRow>
-                                )
-                            })}
-                        </TableBody>
-                    </Table>
-                </CardContent>
-            </Card>
+            <div>
+                <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                    <Shield className="w-6 h-6 text-indigo-600" />
+                    จัดการสิทธิ์และผู้รับผิดชอบ
+                </h2>
+                <p className="text-sm text-slate-500 mt-1">กำหนดครูประจำวิชาและผู้รับผิดชอบนักเรียนรายวิชา</p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {subjects.map((subject) => {
+                    const studentCount = countStudents(subject.name);
+                    return (
+                        <Card key={subject._id} className="rounded-none border hover:shadow-md transition-all duration-200 group relative overflow-hidden">
+                            <div className="absolute top-0 left-0 w-1 h-full bg-indigo-500 group-hover:bg-indigo-600 transition-colors"></div>
+                            <CardContent className="p-5 pl-7">
+                                <div className="flex justify-between items-start mb-4">
+                                    <div className="h-10 w-10 bg-indigo-50 flex items-center justify-center rounded-none text-indigo-600 group-hover:scale-110 transition-transform duration-300">
+                                        <Users className="w-5 h-5" />
+                                    </div>
+                                    <Badge variant="secondary" className="rounded-none bg-slate-100 text-slate-600 font-mono text-xs">
+                                        ID: {subject._id.slice(-4)}
+                                    </Badge>
+                                </div>
+
+                                <h3 className="text-lg font-bold text-slate-800 mb-1 truncate" title={subject.name}>
+                                    {subject.name}
+                                </h3>
+
+                                <div className="flex items-end gap-2 mb-6">
+                                    <span className="text-3xl font-bold text-indigo-600 font-mono tracking-tight">{studentCount}</span>
+                                    <span className="text-sm text-slate-500 mb-1">นักเรียน</span>
+                                </div>
+
+                                <Button
+                                    className="w-full rounded-none bg-white border border-indigo-200 text-indigo-600 hover:bg-indigo-600 hover:text-white transition-all shadow-sm"
+                                    onClick={() => setViewingSubject(subject)}
+                                >
+                                    กำหนดสิทธิ์ครู
+                                    <ChevronsUpDown className="w-4 h-4 ml-2" />
+                                </Button>
+                            </CardContent>
+                        </Card>
+                    )
+                })}
+            </div>
 
             {/* Management Dialog */}
             <Dialog open={!!viewingSubject} onOpenChange={(o) => !o && setViewingSubject(null)}>
-                <DialogContent className="max-w-[95vw] h-[90vh] flex flex-col p-0 rounded-none overflow-hidden">
+                <DialogContent className="max-w-[95vw] h-[90vh] flex flex-col p-0 rounded-none overflow-hidden sm:max-w-screen-xl">
                     <div className="p-6 border-b flex justify-between items-center bg-white sticky top-0 z-10">
                         <div>
-                            <DialogTitle className="text-2xl font-bold text-slate-800">
-                                จัดการสิทธิ์: {viewingSubject?.name}
-                            </DialogTitle>
-                            <DialogDescription className="text-slate-500 mt-1">
-                                กำหนดครูผู้สอนสำหรับนักเรียนแต่ละคนในวิชานี้ ({viewingSubject ? countStudents(viewingSubject.name) : 0} คน)
-                            </DialogDescription>
+                            <div className="flex items-center gap-3">
+                                <div className="h-10 w-10 bg-indigo-100 rounded-none flex items-center justify-center text-indigo-600">
+                                    <Shield className="w-6 h-6" />
+                                </div>
+                                <div>
+                                    <DialogTitle className="text-xl font-bold text-slate-800">
+                                        จัดการสิทธิ์: {viewingSubject?.name}
+                                    </DialogTitle>
+                                    <DialogDescription className="text-slate-500 mt-1 flex items-center gap-2">
+                                        <Users className="w-3 h-3" />
+                                        <span>จำนวนนักเรียนทั้งหมด {viewingSubject ? countStudents(viewingSubject.name) : 0} คน</span>
+                                    </DialogDescription>
+                                </div>
+                            </div>
                         </div>
-                        <Button variant="outline" onClick={() => setViewingSubject(null)} className="rounded-none">ปิด</Button>
+                        <Button variant="ghost" onClick={() => setViewingSubject(null)} className="rounded-none hover:bg-red-50 hover:text-red-500">
+                            <X className="w-5 h-5" />
+                        </Button>
                     </div>
 
                     <div className="flex-1 overflow-y-auto bg-slate-50 p-6">
@@ -197,10 +228,10 @@ export default function TeacherPermissionManagement({ users, onUpdateUser }: Tea
                             <Table>
                                 <TableHeader className="bg-slate-50 sticky top-0 z-10 shadow-sm">
                                     <TableRow>
-                                        <TableHead className="w-[25%] py-4 pl-6 font-bold text-slate-700">ชื่อนักเรียน</TableHead>
+                                        <TableHead className="w-[30%] py-4 pl-6 font-bold text-slate-700">ชื่อนักเรียน</TableHead>
                                         <TableHead className="w-[15%] py-4 font-bold text-slate-700">สถานะ</TableHead>
-                                        <TableHead className="w-[20%] py-4 font-bold text-slate-700">เวลาเรียน</TableHead>
-                                        <TableHead className="w-[40%] py-4 font-bold text-slate-700">ครูผู้รับผิดชอบ</TableHead>
+                                        <TableHead className="w-[20%] py-4 font-bold text-slate-700 center">เวลาเรียน</TableHead>
+                                        <TableHead className="w-[35%] py-4 font-bold text-slate-700">ครูผู้รับผิดชอบ</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -221,51 +252,62 @@ export default function TeacherPermissionManagement({ users, onUpdateUser }: Tea
                                         const displayName = student.studentName || student.displayName || '-';
 
                                         return (
-                                            <TableRow key={student._id}>
+                                            <TableRow key={student._id} className="hover:bg-slate-50/80 transition-colors">
                                                 <TableCell className="py-4 pl-6">
-                                                    <div>
-                                                        <p className="font-bold text-slate-800">{displayName}</p>
-                                                        <p className="text-xs text-slate-500">{student.nickname || '-'} ({student.studentClass || '-'})</p>
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="h-8 w-8 rounded-none bg-slate-100 flex items-center justify-center text-slate-500 text-xs font-bold border border-slate-200">
+                                                            {displayName.charAt(0)}
+                                                        </div>
+                                                        <div>
+                                                            <p className="font-bold text-slate-800">{displayName}</p>
+                                                            <p className="text-xs text-slate-500">{student.nickname || '-'} {student.studentClass ? `(${student.studentClass})` : ''}</p>
+                                                        </div>
                                                     </div>
                                                 </TableCell>
                                                 <TableCell>
                                                     {getStatusBadge(student.status)}
                                                 </TableCell>
                                                 <TableCell>
-                                                    <div className="flex items-center gap-2">
-                                                        <Clock className="w-4 h-4 text-indigo-400" />
-                                                        <span className="font-medium text-slate-700">{classTime}</span>
+                                                    <div className="flex items-center gap-2 text-slate-600 bg-slate-50 px-2 py-1 rounded-none border border-slate-100 w-fit">
+                                                        <Clock className="w-3.5 h-3.5" />
+                                                        <span className="font-mono text-sm">{classTime}</span>
                                                     </div>
                                                 </TableCell>
                                                 <TableCell>
-                                                    <Select
-                                                        value={student.assignedTeacherId || "unassigned"}
-                                                        onValueChange={(value) => {
-                                                            if (value && value !== "unassigned") {
-                                                                handleAssignTeacherToStudent(student._id, value);
-                                                            }
-                                                        }}
-                                                    >
-                                                        <SelectTrigger className="w-full rounded-none border-slate-200 h-9">
-                                                            <SelectValue placeholder="เลือกครูผู้สอน..." />
-                                                        </SelectTrigger>
-                                                        <SelectContent className="max-h-[200px]">
-                                                            <SelectItem value="unassigned" className="text-slate-400">เลือกครูผู้สอน...</SelectItem>
-                                                            {teachers.map((t: any) => (
-                                                                <SelectItem key={t._id} value={t._id}>
-                                                                    {t.displayName}
-                                                                </SelectItem>
-                                                            ))}
-                                                        </SelectContent>
-                                                    </Select>
+                                                    <div className="flex items-center gap-2">
+                                                        <Select
+                                                            value={student.assignedTeacherId || "unassigned"}
+                                                            onValueChange={(value) => {
+                                                                if (value && value !== "unassigned") {
+                                                                    handleAssignTeacherToStudent(student._id, value);
+                                                                }
+                                                            }}
+                                                        >
+                                                            <SelectTrigger className="w-full rounded-none border-slate-200 h-9 focus:ring-indigo-500 focus:border-indigo-500 bg-white shadow-sm">
+                                                                <SelectValue placeholder="เลือกครูผู้สอน..." />
+                                                            </SelectTrigger>
+                                                            <SelectContent className="max-h-[200px] rounded-none">
+                                                                <SelectItem value="unassigned" className="text-slate-400">เลือกครูผู้สอน...</SelectItem>
+                                                                {teachers.map((t: any) => (
+                                                                    <SelectItem key={t._id} value={t._id}>
+                                                                        {t.displayName}
+                                                                    </SelectItem>
+                                                                ))}
+                                                            </SelectContent>
+                                                        </Select>
+                                                    </div>
                                                 </TableCell>
                                             </TableRow>
                                         );
                                     })}
                                     {viewingSubject && countStudents(viewingSubject.name) === 0 && (
                                         <TableRow>
-                                            <TableCell colSpan={4} className="py-12 text-center text-slate-400">
-                                                ไม่มีนักเรียนในรายวิชานี้
+                                            <TableCell colSpan={4} className="h-64 text-center">
+                                                <div className="flex flex-col items-center justify-center text-slate-400">
+                                                    <Users className="w-12 h-12 mb-3 opacity-20" />
+                                                    <p className="text-lg font-medium">ไม่มีนักเรียนลงทะเบียนในวิชานี้</p>
+                                                    <p className="text-sm">เพิ่มนักเรียนในเมนู "สร้างผู้ใช้งานใหม่" หรือ "ลงทะเบียนเรียน"</p>
+                                                </div>
                                             </TableCell>
                                         </TableRow>
                                     )}

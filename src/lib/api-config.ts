@@ -22,6 +22,7 @@ export const API_ENDPOINTS = {
         PENDING_TEACHERS: `${API_BASE}${API_PREFIX}/users/pending-teachers`,
         SCHEDULE: `${API_BASE}${API_PREFIX}/users/schedule`,
         LIST: `${API_BASE}${API_PREFIX}/users`,
+        UPDATE: (id: string) => `${API_BASE}${API_PREFIX}/users/${id}`,
         UPDATE_COURSE_LEVEL: (id: string) => `${API_BASE}${API_PREFIX}/users/${id}/course-level`,
         BATCH_ATTENDANCE: `${API_BASE}${API_PREFIX}/users/batch-attendance`, // [NEW]
     },
@@ -44,6 +45,13 @@ export const API_ENDPOINTS = {
         IMPORT_REGISTRY: `${API_BASE}${API_PREFIX}/users/registry/import`,
         EXCEL_FILES: `${API_BASE}${API_PREFIX}/users/registry/excel-files`,
         IMPORT_FROM_SERVER: `${API_BASE}${API_PREFIX}/users/registry/import-from-server`,
+    },
+
+    // [NEW] Continuous Evaluation
+    EVALUATIONS: {
+        CREATE: `${API_BASE}${API_PREFIX}/evaluations`,
+        GET_STUDENT_SUMMARY: (id: string) => `${API_BASE}${API_PREFIX}/evaluations/student/${id}/summary`,
+        GET_STUDENT_HISTORY: (id: string) => `${API_BASE}${API_PREFIX}/evaluations/student/${id}/history`,
     },
 
     // Courses

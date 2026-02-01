@@ -1,7 +1,7 @@
 'use client';
 
-import { RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Legend, Tooltip } from 'recharts';
-import { SafeResponsiveContainer } from '@/components/SafeResponsiveContainer';
+import { RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Legend, Tooltip, ResponsiveContainer } from 'recharts';
+// SafeResponsiveContainer removed
 
 interface GradeData {
     skills?: { [key: string]: number };
@@ -54,7 +54,7 @@ export function PerformanceChart({ data, fullMark = 60 }: { data?: GradeData, fu
     return (
         <div className="w-full h-[300px] md:h-[400px]">
             {hasData ? (
-                <SafeResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer width="100%" height="100%">
                     <RadarChart cx="50%" cy="50%" outerRadius="70%" data={chartData}>
                         <PolarGrid stroke="#e5e7eb" />
                         <PolarAngleAxis dataKey="skill" tick={{ fill: '#6b7280', fontSize: 11 }} />
@@ -70,7 +70,7 @@ export function PerformanceChart({ data, fullMark = 60 }: { data?: GradeData, fu
                         />
                         <Legend />
                     </RadarChart>
-                </SafeResponsiveContainer>
+                </ResponsiveContainer>
             ) : (
                 <div className="flex h-full items-center justify-center text-muted-foreground flex-col gap-2">
                     <div className="h-12 w-12 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">

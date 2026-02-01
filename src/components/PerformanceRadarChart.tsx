@@ -1,8 +1,8 @@
 'use client';
 
 import React from 'react';
-import { RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Tooltip } from 'recharts';
-import { SafeResponsiveContainer } from '@/components/SafeResponsiveContainer';
+import { RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Tooltip, ResponsiveContainer } from 'recharts';
+// SafeResponsiveContainer removed
 
 interface PerformanceRadarChartProps {
     data: any;
@@ -46,7 +46,7 @@ export const PerformanceRadarChart = ({ data }: PerformanceRadarChartProps) => {
     if (chartData.length === 0) chartData = EMPTY_DATA;
 
     return (
-        <SafeResponsiveContainer width="100%" height="100%">
+        <ResponsiveContainer width="100%" height="100%">
             <RadarChart cx="50%" cy="50%" outerRadius="75%" data={chartData}>
                 <PolarGrid stroke="#e2e8f0" />
                 <PolarAngleAxis dataKey="subject" tick={{ fill: '#64748b', fontSize: 12, fontWeight: 600 }} />
@@ -64,6 +64,6 @@ export const PerformanceRadarChart = ({ data }: PerformanceRadarChartProps) => {
                     itemStyle={{ color: '#4f46e5', fontWeight: 600 }}
                 />
             </RadarChart>
-        </SafeResponsiveContainer>
+        </ResponsiveContainer>
     );
 };

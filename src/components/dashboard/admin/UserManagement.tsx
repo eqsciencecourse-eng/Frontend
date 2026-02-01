@@ -171,69 +171,118 @@ export default function UserManagement({ users, onDeleteUser, onUpdateUser, allS
                                 </div>
 
                                 <div className="space-y-6 border-t pt-4 dark:border-slate-700">
-                                    {/* Personal Info */}
-                                    <div>
-                                        <h4 className="text-sm font-bold text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-2">
-                                            <Users className="w-4 h-4" /> ข้อมูลส่วนตัว
+                                    {/* Credentials Section - Highlighted for Teachers */}
+                                    <div className="bg-yellow-50 p-4 border border-yellow-200 rounded-none">
+                                        <h4 className="text-sm font-bold text-yellow-800 mb-3 flex items-center gap-2">
+                                            🔐 ข้อมูลเข้าสู่ระบบ
                                         </h4>
-                                        <div className="grid grid-cols-2 gap-4 text-sm">
+                                        <div className="grid grid-cols-1 gap-4">
                                             <div>
-                                                <p className="text-xs text-slate-500">ชื่อ-นามสกุล</p>
-                                                <p className="font-medium">{selectedUser.prefix || ''} {selectedUser.firstName} {selectedUser.lastName} {(!selectedUser.firstName && selectedUser.displayName)}</p>
+                                                <p className="text-xs text-slate-500 mb-1">Username / Email</p>
+                                                <div className="flex items-center gap-2 bg-white p-2 border border-yellow-100">
+                                                    <p className="font-mono font-medium flex-1 truncate">{selectedUser.email || selectedUser.username}</p>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="h-6 w-6 p-0 hover:bg-yellow-100"
+                                                        onClick={() => handleCopy(selectedUser.email || selectedUser.username, 'Username')}
+                                                    >
+                                                        <span className="text-xs">📋</span>
+                                                    </Button>
+                                                </div>
                                             </div>
                                             <div>
-                                                <p className="text-xs text-slate-500">ชื่อเล่น</p>
-                                                <p className="font-medium">{selectedUser.nickname || '-'}</p>
-                                            </div>
-                                            <div>
-                                                <p className="text-xs text-slate-500">วัน/เดือน/ปี เกิด</p>
-                                                <p className="font-medium">{selectedUser.birthDate || '-'}</p>
-                                            </div>
-                                            <div>
-                                                <p className="text-xs text-slate-500">อายุ</p>
-                                                <p className="font-medium">{selectedUser.age || '-'} ปี</p>
-                                            </div>
-                                            <div className="col-span-2">
-                                                <p className="text-xs text-slate-500">ที่อยู่</p>
-                                                <p className="font-medium">{selectedUser.address || '-'}</p>
-                                            </div>
-                                            <div>
-                                                <p className="text-xs text-slate-500">เบอร์โทรศัพท์</p>
-                                                <p className="font-medium">{selectedUser.studentPhone || '-'}</p>
-                                            </div>
-                                            <div>
-                                                <p className="text-xs text-slate-500">สถานะ</p>
-                                                <Badge variant={selectedUser.status === 'drop' ? 'destructive' : 'default'} className="rounded-none">
-                                                    {selectedUser.status === 'drop' ? 'Drop' : 'กำลังเรียน'}
-                                                </Badge>
+                                                <p className="text-xs text-slate-500 mb-1">Password</p>
+                                                <div className="flex items-center gap-2 bg-white p-2 border border-yellow-100">
+                                                    {selectedUser.plainPassword ? (
+                                                        <>
+                                                            <p className="font-mono font-medium text-red-600 flex-1">{selectedUser.plainPassword}</p>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                className="h-6 w-6 p-0 hover:bg-yellow-100"
+                                                                onClick={() => handleCopy(selectedUser.plainPassword, 'Password')}
+                                                            >
+                                                                <span className="text-xs">📋</span>
+                                                            </Button>
+                                                        </>
+                                                    ) : (
+                                                        <p className="text-xs text-slate-400 italic">
+                                                            (ไม่พบรหัสผ่าน - บัญชีเก่าหรือถูกเปลี่ยน)
+                                                        </p>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
 
-                                    {/* Parent Info */}
-                                    <div className="bg-slate-50 p-3 rounded-none border border-slate-100 dark:bg-slate-800 dark:border-slate-700">
-                                        <h4 className="text-sm font-bold text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-2">
-                                            <UserPlus className="w-4 h-4" /> ข้อมูลผู้ปกครอง
-                                        </h4>
-                                        <div className="grid grid-cols-2 gap-4 text-sm">
+                                    {/* Show Detailed Info ONLY for Non-Teachers (Students) */}
+                                    {selectedUser.role !== 'teacher' && selectedUser.role !== 'admin' && (
+                                        <>
                                             <div>
-                                                <p className="text-xs text-slate-500">ชื่อผู้ปกครอง</p>
-                                                <p className="font-medium">{selectedUser.parentName || '-'}</p>
+                                                <h4 className="text-sm font-bold text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-2">
+                                                    <Users className="w-4 h-4" /> ข้อมูลส่วนตัว
+                                                </h4>
+                                                <div className="grid grid-cols-2 gap-4 text-sm">
+                                                    <div>
+                                                        <p className="text-xs text-slate-500">ชื่อ-นามสกุล</p>
+                                                        <p className="font-medium">{selectedUser.prefix || ''} {selectedUser.firstName} {selectedUser.lastName} {(!selectedUser.firstName && selectedUser.displayName)}</p>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-xs text-slate-500">ชื่อเล่น</p>
+                                                        <p className="font-medium">{selectedUser.nickname || '-'}</p>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-xs text-slate-500">วัน/เดือน/ปี เกิด</p>
+                                                        <p className="font-medium">{selectedUser.birthDate || '-'}</p>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-xs text-slate-500">อายุ</p>
+                                                        <p className="font-medium">{selectedUser.age || '-'} ปี</p>
+                                                    </div>
+                                                    <div className="col-span-2">
+                                                        <p className="text-xs text-slate-500">ที่อยู่</p>
+                                                        <p className="font-medium">{selectedUser.address || '-'}</p>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-xs text-slate-500">เบอร์โทรศัพท์</p>
+                                                        <p className="font-medium">{selectedUser.studentPhone || '-'}</p>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-xs text-slate-500">สถานะ</p>
+                                                        <Badge variant={selectedUser.status === 'drop' ? 'destructive' : 'default'} className="rounded-none">
+                                                            {selectedUser.status === 'drop' ? 'Drop' : 'กำลังเรียน'}
+                                                        </Badge>
+                                                    </div>
+                                                </div>
                                             </div>
-                                            <div>
-                                                <p className="text-xs text-slate-500">ความสัมพันธ์</p>
-                                                <p className="font-medium">{selectedUser.parentRelation || '-'}</p>
+
+                                            {/* Parent Info */}
+                                            <div className="bg-slate-50 p-3 rounded-none border border-slate-100 dark:bg-slate-800 dark:border-slate-700">
+                                                <h4 className="text-sm font-bold text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-2">
+                                                    <UserPlus className="w-4 h-4" /> ข้อมูลผู้ปกครอง
+                                                </h4>
+                                                <div className="grid grid-cols-2 gap-4 text-sm">
+                                                    <div>
+                                                        <p className="text-xs text-slate-500">ชื่อผู้ปกครอง</p>
+                                                        <p className="font-medium">{selectedUser.parentName || '-'}</p>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-xs text-slate-500">ความสัมพันธ์</p>
+                                                        <p className="font-medium">{selectedUser.parentRelation || '-'}</p>
+                                                    </div>
+                                                    <div className="col-span-2">
+                                                        <p className="text-xs text-slate-500">เบอร์โทรติดต่อ</p>
+                                                        <p className="font-medium">{selectedUser.parentPhone || '-'}</p>
+                                                    </div>
+                                                    <div className="col-span-2">
+                                                        <p className="text-xs text-slate-500">ที่อยู่ผู้ปกครอง</p>
+                                                        <p className="font-medium">{selectedUser.parentAddress || '-'}</p>
+                                                    </div>
+                                                </div>
                                             </div>
-                                            <div className="col-span-2">
-                                                <p className="text-xs text-slate-500">เบอร์โทรติดต่อ</p>
-                                                <p className="font-medium">{selectedUser.parentPhone || '-'}</p>
-                                            </div>
-                                            <div className="col-span-2">
-                                                <p className="text-xs text-slate-500">ที่อยู่ผู้ปกครอง</p>
-                                                <p className="font-medium">{selectedUser.parentAddress || '-'}</p>
-                                            </div>
-                                        </div>
-                                    </div>
+                                        </>
+                                    )}
                                 </div>
 
                                 <div className="flex justify-end">
