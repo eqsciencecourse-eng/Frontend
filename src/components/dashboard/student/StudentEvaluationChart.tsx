@@ -37,12 +37,12 @@ const SKILL_LABELS: Record<string, string> = {
 };
 
 const LEVEL_TITLES = [
-    { min: 0, title: 'Novice Learner', color: 'text-slate-500', bg: 'bg-slate-100', icon: Star },
-    { min: 5, title: 'Apprentice', color: 'text-blue-500', bg: 'bg-blue-100', icon: Zap },
-    { min: 10, title: 'Skillful Student', color: 'text-indigo-500', bg: 'bg-indigo-100', icon: Zap },
-    { min: 20, title: 'Expert Developer', color: 'text-purple-500', bg: 'bg-purple-100', icon: Trophy },
-    { min: 40, title: 'Grandmaster', color: 'text-amber-500', bg: 'bg-amber-100', icon: Crown },
-    { min: 60, title: 'Legendary', color: 'text-red-500', bg: 'bg-red-100', icon: Crown }
+    { min: 0, title: 'ผู้เรียนรู้ระดับต้น', color: 'text-slate-500', bg: 'bg-slate-100', icon: Star },
+    { min: 5, title: 'ผู้ฝึกฝน', color: 'text-blue-500', bg: 'bg-blue-100', icon: Zap },
+    { min: 10, title: 'นักเรียนผู้ชำนาญ', color: 'text-indigo-500', bg: 'bg-indigo-100', icon: Zap },
+    { min: 20, title: 'นักพัฒนาผู้เชี่ยวชาญ', color: 'text-purple-500', bg: 'bg-purple-100', icon: Trophy },
+    { min: 40, title: 'จอมเวทย์', color: 'text-amber-500', bg: 'bg-amber-100', icon: Crown },
+    { min: 60, title: 'ตำนาน', color: 'text-red-500', bg: 'bg-red-100', icon: Crown }
 ];
 
 export default function StudentEvaluationChart({ studentId }: { studentId?: string }) {
@@ -101,7 +101,7 @@ export default function StudentEvaluationChart({ studentId }: { studentId?: stri
         labels: chartLabels,
         datasets: [
             {
-                label: 'My Skill Level',
+                label: 'ระดับทักษะ',
                 data: chartValues,
                 backgroundColor: 'rgba(99, 102, 241, 0.2)', // Indigo 500 with opacity
                 borderColor: 'rgba(99, 102, 241, 1)',      // Indigo 500
@@ -126,7 +126,8 @@ export default function StudentEvaluationChart({ studentId }: { studentId?: stri
                 pointLabels: {
                     font: {
                         size: 12,
-                        weight: 600
+                        weight: 600,
+                        family: "'Sarabun', sans-serif" // Ensure Thai font support if available
                     },
                     color: '#64748b' // Slate 500
                 },
@@ -160,7 +161,7 @@ export default function StudentEvaluationChart({ studentId }: { studentId?: stri
                         if (context.parsed.r !== null) {
                             // Custom tooltip text instead of raw number
                             const val = context.parsed.r;
-                            const rating = val >= 8 ? 'Excellent' : val >= 5 ? 'Good' : 'Improving';
+                            const rating = val >= 8 ? 'ยอดเยี่ยม' : val >= 5 ? 'ดี' : 'กำลังพัฒนา';
                             label += rating;
                         }
                         return label;
@@ -181,13 +182,13 @@ export default function StudentEvaluationChart({ studentId }: { studentId?: stri
         <div className="space-y-6">
             {/* 1. Level & Stats Header */}
             <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                <Card className="relative overflow-hidden border-indigo-100 bg-gradient-to-br from-indigo-50 to-white shadow-sm transition-all hover:shadow-md md:col-span-2">
-                    <div className="absolute right-[-20px] top-[-20px] h-32 w-32 rounded-full bg-indigo-100/50 blur-3xl" />
+                <Card className="relative overflow-hidden border-orange-100 bg-gradient-to-br from-orange-50 to-white shadow-sm transition-all hover:shadow-md md:col-span-2">
+                    <div className="absolute right-[-20px] top-[-20px] h-32 w-32 rounded-full bg-orange-100/50 blur-3xl text-orange-200" />
                     <CardHeader className="flex flex-row items-center justify-between pb-2 z-10 relative">
                         <CardTitle className="text-sm font-medium text-slate-500 uppercase tracking-wider">
-                            Class Rank (ระดับความสามารถ)
+                            ระดับความสามารถ (Class Rank)
                         </CardTitle>
-                        <Crown className="h-5 w-5 text-indigo-500" />
+                        <Crown className="h-5 w-5 text-orange-500" />
                     </CardHeader>
                     <CardContent className="z-10 relative">
                         <div className="flex items-center gap-6">
@@ -213,16 +214,16 @@ export default function StudentEvaluationChart({ studentId }: { studentId?: stri
                     </CardContent>
                 </Card>
 
-                <Card className="border-emerald-100 bg-gradient-to-br from-emerald-50 to-white shadow-sm transition-all hover:shadow-md">
+                <Card className="border-indigo-100 bg-gradient-to-br from-indigo-50 to-white shadow-sm transition-all hover:shadow-md">
                     <CardHeader className="pb-2">
                         <CardTitle className="text-sm font-medium text-slate-500 uppercase tracking-wider">
-                            Status
+                            สถานะ (Status)
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
                         <div className="flex flex-col items-center justify-center py-4">
                             <Icon className={`h-12 w-12 ${levelInfo.color} mb-2`} />
-                            <span className={`text-lg font-bold ${levelInfo.color}`}>Active Student</span>
+                            <span className={`text-lg font-bold ${levelInfo.color}`}>นักเรียน (Active)</span>
                         </div>
                     </CardContent>
                 </Card>
@@ -235,7 +236,7 @@ export default function StudentEvaluationChart({ studentId }: { studentId?: stri
                         <div className="flex items-center justify-between">
                             <CardTitle className="flex items-center gap-2 text-lg font-bold text-slate-800">
                                 <Target className="h-5 w-5 text-indigo-500" />
-                                Skill Analysis (วิเคราะห์ความสามารถ)
+                                วิเคราะห์ความสามารถ
                             </CardTitle>
                         </div>
                     </CardHeader>
@@ -268,8 +269,8 @@ export default function StudentEvaluationChart({ studentId }: { studentId?: stri
                                     <div className="h-2.5 w-full overflow-hidden rounded-full bg-slate-100">
                                         <div
                                             className={`h-full rounded-full transition-all duration-1000 ease-out ${val >= 8 ? 'bg-gradient-to-r from-emerald-400 to-emerald-500' :
-                                                val >= 5 ? 'bg-gradient-to-r from-blue-400 to-indigo-500' :
-                                                    'bg-gradient-to-r from-orange-400 to-orange-500'
+                                                    val >= 5 ? 'bg-gradient-to-r from-blue-400 to-indigo-500' :
+                                                        'bg-gradient-to-r from-orange-400 to-orange-500'
                                                 }`}
                                             style={{ width: `${(val / 10) * 100}%` }}
                                         />
