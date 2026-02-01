@@ -1,4 +1,5 @@
 'use client';
+// Last Updated: 2026-02-01 (Force Refresh)
 
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -269,8 +270,8 @@ export default function StudentEvaluationChart({ studentId }: { studentId?: stri
                                     <div className="h-2.5 w-full overflow-hidden rounded-full bg-slate-100">
                                         <div
                                             className={`h-full rounded-full transition-all duration-1000 ease-out ${val >= 8 ? 'bg-gradient-to-r from-emerald-400 to-emerald-500' :
-                                                    val >= 5 ? 'bg-gradient-to-r from-blue-400 to-indigo-500' :
-                                                        'bg-gradient-to-r from-orange-400 to-orange-500'
+                                                val >= 5 ? 'bg-gradient-to-r from-blue-400 to-indigo-500' :
+                                                    'bg-gradient-to-r from-orange-400 to-orange-500'
                                                 }`}
                                             style={{ width: `${(val / 10) * 100}%` }}
                                         />
