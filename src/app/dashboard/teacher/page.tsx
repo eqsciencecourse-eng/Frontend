@@ -355,7 +355,7 @@ function TeacherDashboardContent() {
                                             {todayClasses.length > 0 ? (
                                                 <div className="flex flex-col gap-1">
                                                     {todayClasses.slice(0, 3).map(s => (
-                                                        <span key={s._id} className="truncate">• {s.name} ({s.todaysSlots.map((sl: string) => sl.split('|')[1].trim()).join(', ')})</span>
+                                                        <span key={s._id} className="truncate">• {s.name} ({s.todaysSlots.map((sl: string) => sl.includes('|') ? sl.split('|')[1].trim() : sl.trim()).join(', ')})</span>
                                                     ))}
                                                     {todayClasses.length > 3 && <span>...และอีก {todayClasses.length - 3} วิชา</span>}
                                                 </div>
