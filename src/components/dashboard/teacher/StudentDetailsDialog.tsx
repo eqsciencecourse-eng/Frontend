@@ -31,6 +31,10 @@ export default function StudentDetailsDialog({ isOpen, onClose, student, subject
     const [historyLogs, setHistoryLogs] = useState<any[]>([]);
     const [isLoadingHistory, setIsLoadingHistory] = useState(false);
 
+    // [NEW] Evaluation Selected Attendance Date
+    const [selectedEvalRecordId, setSelectedEvalRecordId] = useState<string | null>(null);
+    const [editingEvalId, setEditingEvalId] = useState<string | null>(null);
+
     // Attendance State
     const [attendanceHistory, setAttendanceHistory] = useState<any[]>([]);
     const [attendanceStats, setAttendanceStats] = useState({ present: 0, late: 0, leave: 0, absent: 0 });
@@ -80,18 +84,30 @@ export default function StudentDetailsDialog({ isOpen, onClose, student, subject
 
     const handleSaveEvaluation = async () => {
         if (!student) return;
+
+        const selectedRecord = attendanceHistory.find(r => r.id === selectedEvalRecordId);
+        if (!selectedRecord && attendanceHistory.length > 0) {
+            toast.error('กรุณาเลือกวันที่เข้าเรียนก่อนประเมิน');
+            return;
+        }
+
         try {
             const token = await teacher.getIdToken();
             const payload = {
                 studentId: student._id || student.id,
                 teacherId: teacher._id || teacher.id || teacher.uid,
                 subjectId: subject?._id || subject?.id || 'general',
-                date: new Date(),
+                date: selectedRecord ? new Date(selectedRecord.date) : new Date(),
                 scores: evalScores
             };
 
-            const res = await fetch(API_ENDPOINTS.EVALUATIONS.CREATE, {
-                method: 'POST',
+            const url = editingEvalId 
+                ? API_ENDPOINTS.EVALUATIONS.UPDATE(editingEvalId) 
+                : API_ENDPOINTS.EVALUATIONS.CREATE;
+            const method = editingEvalId ? 'PUT' : 'POST';
+
+            const res = await fetch(url, {
+                method,
                 headers: {
                     'Content-Type': 'application/json',
                     Authorization: `Bearer ${token}`
@@ -100,7 +116,8 @@ export default function StudentDetailsDialog({ isOpen, onClose, student, subject
             });
 
             if (res.ok) {
-                toast.success('บันทึกผลการประเมินสำเร็จ');
+                toast.success(editingEvalId ? 'แก้ไขผลการประเมินสำเร็จ' : 'บันทึกผลการประเมินสำเร็จ');
+                setEditingEvalId(null);
                 fetchEvaluationHistory(); // [NEW] Refresh history immediately
                 if (onUpdate) onUpdate();
             } else {
@@ -108,6 +125,43 @@ export default function StudentDetailsDialog({ isOpen, onClose, student, subject
             }
         } catch (error) {
             console.error('Save Eval Error', error);
+            toast.error('เกิดข้อผิดพลาด');
+        }
+    };
+
+    const handleEditEvaluationLog = (log: any) => {
+        setEvalScores(log.scores);
+        setEditingEvalId(log._id || log.id);
+        
+        // Try to match the date to select the correct attendance pill
+        const logTime = new Date(log.date || log.createdAt).setHours(0,0,0,0);
+        const match = attendanceHistory.find(r => new Date(r.date).setHours(0,0,0,0) === logTime);
+        if (match) setSelectedEvalRecordId(match.id);
+    };
+
+    const handleCancelEditEval = () => {
+        setEditingEvalId(null);
+        setEvalScores({ creativity: 0, planning: 0, problemSolving: 0, design: 0, programming: 0, focus: 0 });
+    };
+
+    const handleDeleteEvaluationLog = async (id: string) => {
+        if (!confirm('ยืนยันการลบผลการประเมินนี้?')) return;
+        try {
+            const token = await teacher.getIdToken();
+            const res = await fetch(API_ENDPOINTS.EVALUATIONS.DELETE(id), {
+                method: 'DELETE',
+                headers: { Authorization: `Bearer ${token}` }
+            });
+
+            if (res.ok) {
+                toast.success('ลบข้อมูลเรียบร้อย');
+                if (editingEvalId === id) handleCancelEditEval();
+                fetchEvaluationHistory();
+                if (onUpdate) onUpdate();
+            } else {
+                toast.error('ลบไม่สำเร็จ');
+            }
+        } catch (error) {
             toast.error('เกิดข้อผิดพลาด');
         }
     };
@@ -158,8 +212,16 @@ export default function StudentDetailsDialog({ isOpen, onClose, student, subject
                     }
                 });
 
-                setAttendanceHistory(studentHistory.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+                const sortedHistory = studentHistory.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+                setAttendanceHistory(sortedHistory);
                 setAttendanceStats(stats);
+                
+                // Set default eval date to latest attendance
+                if (sortedHistory.length > 0) {
+                    setSelectedEvalRecordId(sortedHistory[0].id);
+                } else {
+                    setSelectedEvalRecordId(null);
+                }
             }
         } catch (error) {
             console.error('Fetch Attendance Error', error);
@@ -275,7 +337,7 @@ export default function StudentDetailsDialog({ isOpen, onClose, student, subject
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="max-w-[95vw] w-full h-[90vh] flex flex-col p-0 gap-0 bg-white border-0 shadow-2xl rounded-lg overflow-hidden font-sans sm:max-w-4xl">
+            <DialogContent className="max-w-[95vw] w-full h-[90vh] flex flex-col p-0 gap-0 bg-white border-0 shadow-2xl rounded-lg overflow-hidden font-sans sm:max-w-6xl">
 
                 {/* Header */}
                 <DialogHeader className="px-6 py-4 border-b bg-white flex flex-row items-center justify-between space-y-0 shrink-0">
@@ -404,45 +466,123 @@ export default function StudentDetailsDialog({ isOpen, onClose, student, subject
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-10 h-full">
                                 {/* Left Side: Input Form */}
-                                <div className="space-y-6 overflow-y-auto h-full pr-2">
-                                    <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2 mb-4 sticky top-0 bg-white z-10 py-2">
-                                        <BarChart3 className="w-5 h-5 text-indigo-600" />
-                                        แบบประเมินทักษะ ({new Date().toLocaleDateString('th-TH')})
-                                    </h3>
-
-                                    {[
-                                        { key: 'creativity', label: 'ความคิดสร้างสรรค์ (Creativity)' },
-                                        { key: 'planning', label: 'วางแผนการทำงาน (Work Planning)' },
-                                        { key: 'problemSolving', label: 'การแก้ไขปัญหา (Problem Solving)' },
-                                        { key: 'design', label: 'ปรับปรุงการออกแบบ (Design Improvement)' },
-                                        { key: 'programming', label: 'ทักษะการเขียนโปรแกรม (Programming Skills)' },
-                                        { key: 'focus', label: 'สมาธิในการเรียน (Focus)' }
-                                    ].map((skill) => (
-                                        <div key={skill.key} className="space-y-2 group">
-                                            <div className="flex justify-between">
-                                                <label className="text-sm font-medium text-slate-700 group-hover:text-indigo-600 transition-colors">{skill.label}</label>
-                                                <span className="text-sm font-bold text-indigo-600 bg-indigo-50 px-2 rounded-md">{evalScores[skill.key as keyof typeof evalScores] || 0}/10</span>
+                                <div className="space-y-4 overflow-y-auto h-full pr-3 relative pb-2 pt-1 flex flex-col">
+                                    <div className="shrink-0 bg-white z-20 pb-4 border-b border-slate-100 mb-2">
+                                        <h3 className="text-base font-bold text-slate-800 flex items-center gap-2 mb-3">
+                                            <BarChart3 className="w-5 h-5 text-indigo-600" />
+                                            เลือกวันที่ประเมิน (อิงจากเวลาเรียน)
+                                        </h3>
+                                        
+                                        {attendanceHistory.length === 0 ? (
+                                            <div className="text-sm text-amber-600 bg-amber-50 px-4 py-3 rounded-xl border border-amber-100 flex items-center gap-3 font-medium">
+                                                <History className="w-5 h-5" />
+                                                ยังไม่มีประวัติการเข้าเรียน กรุณาเช็คชื่อก่อนครับ
                                             </div>
-                                            <input
-                                                type="range"
-                                                min="0"
-                                                max="10"
-                                                step="1"
-                                                className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600 hover:bg-slate-300 transition-all"
-                                                value={evalScores[skill.key as keyof typeof evalScores] || 0}
-                                                onChange={(e) => setEvalScores({ ...evalScores, [skill.key]: parseInt(e.target.value) })}
-                                            />
-                                            <div className="flex justify-between text-[10px] text-slate-400 font-medium">
-                                                <span>ปรับปรุง (0-3)</span>
-                                                <span>พอใช้ (4-6)</span>
-                                                <span>ดีมาก (7-10)</span>
-                                            </div>
-                                        </div>
-                                    ))}
+                                        ) : (
+                                            <div className="flex gap-2.5 overflow-x-auto pb-1.5 scrollbar-hide py-0.5 px-0.5">
+                                                {attendanceHistory.map(record => {
+                                                    const isSelected = selectedEvalRecordId === record.id;
+                                                    const s = (record.status || '').toLowerCase();
+                                                    
+                                                    // Base Unselected colors
+                                                    let statusColor = 'bg-slate-100 text-slate-600';
+                                                    let statusLabel = 'ไม่ทราบ';
+                                                    if (s === 'present') { statusColor = 'bg-emerald-50 text-emerald-600'; statusLabel = 'มาเรียน'; }
+                                                    else if (s === 'absent') { statusColor = 'bg-red-50 text-red-600'; statusLabel = 'ขาด'; }
+                                                    else if (s === 'leave') { statusColor = 'bg-blue-50 text-blue-600'; statusLabel = 'ลา'; }
+                                                    else if (s === 'late') { statusColor = 'bg-amber-50 text-amber-600'; statusLabel = 'สาย'; }
+                                                    
+                                                    // Override if selected
+                                                    if (isSelected) {
+                                                        statusColor = 'bg-white/25 text-white';
+                                                    }
 
-                                    <div className="pt-4 sticky bottom-0 bg-white pb-2">
-                                        <Button className="w-full h-11 bg-indigo-600 hover:bg-indigo-700 text-white text-base shadow-lg shadow-indigo-100" onClick={handleSaveEvaluation}>
-                                            <Save className="w-5 h-5 mr-2" /> บันทึกผลการประเมิน
+                                                    return (
+                                                        <button 
+                                                            key={record.id}
+                                                            onClick={() => setSelectedEvalRecordId(record.id)}
+                                                            className={`flex flex-col items-center justify-center flex-shrink-0 px-4 py-2.5 rounded-2xl border transition-all duration-200 outline-none min-w-[100px]
+                                                                ${isSelected 
+                                                                    ? 'bg-indigo-600 border-indigo-600 shadow-md shadow-indigo-600/20 scale-[1.02] text-white' 
+                                                                    : 'bg-white border-slate-200 hover:border-indigo-300 hover:bg-slate-50 opacity-90 text-slate-600'}`
+                                                            }
+                                                        >
+                                                            <div className={`text-[10px] font-bold px-2 py-0.5 rounded-full mb-1.5 ${statusColor}`}>
+                                                                {statusLabel}
+                                                            </div>
+                                                            <div className="text-sm font-bold tracking-tight">
+                                                                {new Date(record.date).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' })}
+                                                            </div>
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div className="flex-1 space-y-4">
+                                        {[
+                                            { key: 'creativity', label: 'ความคิดสร้างสรรค์ (Creativity)' },
+                                            { key: 'planning', label: 'วางแผนการทำงาน (Work Planning)' },
+                                            { key: 'problemSolving', label: 'การแก้ไขปัญหา (Problem Solving)' },
+                                            { key: 'design', label: 'ปรับปรุงการออกแบบ (Design Improvement)' },
+                                            { key: 'programming', label: 'ทักษะการเขียนโปรแกรม (Programming Skills)' },
+                                            { key: 'focus', label: 'สมาธิในการเรียน (Focus)' }
+                                        ].map((skill) => {
+                                            const score = evalScores[skill.key as keyof typeof evalScores] || 0;
+                                            // Ensure classes exist fully written for tailwind PurgeCSS
+                                            const getStyles = (s: number) => {
+                                                if (s <= 3) return { textClass: 'text-rose-500', barBg: 'bg-rose-500', thumbAccent: 'accent-rose-500' };
+                                                if (s <= 6) return { textClass: 'text-amber-500', barBg: 'bg-amber-500', thumbAccent: 'accent-amber-500' };
+                                                if (s >= 9) return { textClass: 'text-emerald-500', barBg: 'bg-emerald-500', thumbAccent: 'accent-emerald-500' };
+                                                return { textClass: 'text-indigo-600', barBg: 'bg-indigo-600', thumbAccent: 'accent-indigo-600' };
+                                            };
+                                            const styles = getStyles(score);
+
+                                            return (
+                                                <div key={skill.key} className="p-4 rounded-xl border border-slate-100 bg-white shadow-sm hover:shadow-md transition-shadow">
+                                                    <div className="flex justify-between items-center mb-3">
+                                                        <label className="text-sm font-bold text-slate-700">{skill.label}</label>
+                                                        <div className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold text-white shadow-sm ${styles.barBg}`}>
+                                                            {score}
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <div className="w-full">
+                                                        <input
+                                                            type="range"
+                                                            min="0"
+                                                            max="10"
+                                                            step="1"
+                                                            className={`w-full h-2 rounded-lg cursor-pointer bg-slate-200 outline-none ${styles.thumbAccent}`}
+                                                            value={score}
+                                                            onChange={(e) => setEvalScores({ ...evalScores, [skill.key]: parseInt(e.target.value) })}
+                                                        />
+                                                        <div className="flex justify-between text-[10px] text-slate-400 font-bold mt-2.5 uppercase tracking-wide">
+                                                            <span className={score <= 3 ? styles.textClass : ''}>ปรับปรุง (0-3)</span>
+                                                            <span className={score >= 4 && score <= 6 ? styles.textClass : ''}>พอใช้ (4-6)</span>
+                                                            <span className={score >= 7 ? styles.textClass : ''}>ดีมาก (7-10)</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+
+                                    <div className="shrink-0 pt-4 pb-0 mt-2 border-t border-slate-100 bg-white">
+                                        {editingEvalId && (
+                                            <div className="flex justify-between items-center mb-3 px-3 py-2 text-sm text-indigo-600 bg-indigo-50 border border-indigo-100 rounded-lg font-medium">
+                                                <span>กำลังแก้ไขผลการประเมิน</span>
+                                                <button onClick={handleCancelEditEval} className="text-indigo-800 hover:text-indigo-900 underline text-xs font-bold">ยกเลิก</button>
+                                            </div>
+                                        )}
+                                        <Button 
+                                            className="w-full h-12 bg-indigo-600 hover:bg-indigo-700 text-white text-base font-bold shadow-lg shadow-indigo-600/20 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-[0.98]" 
+                                            onClick={handleSaveEvaluation}
+                                            disabled={attendanceHistory.length === 0}
+                                        >
+                                            <Save className="w-5 h-5 mr-2" /> 
+                                            {attendanceHistory.length === 0 ? 'รอการเช็คชื่อก่อนประเมิน' : editingEvalId ? 'บันทึกการแก้ไข' : 'บันทึกผลการประเมิน'}
                                         </Button>
                                     </div>
                                 </div>
@@ -480,13 +620,23 @@ export default function StudentDetailsDialog({ isOpen, onClose, student, subject
                                                                     <p className="text-sm font-bold text-slate-700">
                                                                         {new Date(log.date || log.createdAt).toLocaleDateString('th-TH', { year: '2-digit', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                                                                     </p>
-                                                                    <p className="text-xs text-slate-400">ผู้ประเมิน: ครู (ID: ...{log.teacherId?.slice(-4)})</p>
+                                                                    <p className="text-xs text-slate-400 mt-0.5">ผู้ประเมิน: ครู (ID: ...{log.teacherId?.slice(-4)})</p>
                                                                 </div>
-                                                                <div className="text-right">
-                                                                    <span className={`text-lg font-bold ${Number(avg) >= 8 ? 'text-green-600' : Number(avg) >= 5 ? 'text-indigo-600' : 'text-orange-500'}`}>
-                                                                        {avg}
-                                                                    </span>
-                                                                    <span className="text-xs text-slate-400 block">เฉลี่ย</span>
+                                                                <div className="flex flex-col items-end gap-1">
+                                                                    <div className="flex gap-2">
+                                                                        <button onClick={() => handleEditEvaluationLog(log)} className="text-slate-400 hover:text-blue-600 transition-colors p-1" title="แก้ไข">
+                                                                            <Edit2 className="w-4 h-4" />
+                                                                        </button>
+                                                                        <button onClick={() => handleDeleteEvaluationLog(log._id || log.id)} className="text-slate-400 hover:text-red-600 transition-colors p-1" title="ลบ">
+                                                                            <Trash2 className="w-4 h-4" />
+                                                                        </button>
+                                                                    </div>
+                                                                    <div className="text-right mt-1 flex flex-col items-end">
+                                                                        <span className={`text-xl font-black leading-none ${Number(avg) >= 8 ? 'text-emerald-500' : Number(avg) >= 5 ? 'text-indigo-500' : 'text-orange-500'}`}>
+                                                                            {avg}
+                                                                        </span>
+                                                                        <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-1">เฉลี่ย</span>
+                                                                    </div>
                                                                 </div>
                                                             </div>
 

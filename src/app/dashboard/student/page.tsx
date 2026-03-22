@@ -339,12 +339,18 @@ export default function StudentDashboard() {
                                                             className={`h-full rounded-full ${isActive ? 'bg-gradient-to-r from-indigo-500 to-purple-500' : 'bg-slate-400'}`}
                                                         />
                                                     </div>
-                                                    <p className="text-right text-xs text-slate-400 font-medium mt-1">{course.usedSessions}/{course.totalSessions} ครั้ง</p>
+                                                    <div className="flex justify-between items-center mt-1">
+                                                        <div className="flex items-center gap-1.5 text-slate-600 text-[11px] font-semibold bg-indigo-50 text-indigo-600 px-2 py-1 rounded-md">
+                                                            <Clock className="w-3.5 h-3.5" />
+                                                            {course.day !== '-' || course.time !== '-' ? `${course.day} ${course.time}` : 'ยังไม่ระบุเวลา'}
+                                                        </div>
+                                                        <p className="text-right text-xs text-slate-400 font-medium">{course.usedSessions}/{course.totalSessions} ครั้ง</p>
+                                                    </div>
                                                 </div>
                                             ) : (
                                                 <div className="bg-slate-50 rounded-xl p-3 flex items-center gap-3 text-sm text-slate-600">
                                                     <Clock className="w-5 h-5 text-indigo-400" />
-                                                    <span className="font-medium">{course.day} • {course.time}</span>
+                                                    <span className="font-medium">{course.day !== '-' || course.time !== '-' ? `${course.day} • ${course.time}` : 'ยังไม่ระบุเวลา'}</span>
                                                 </div>
                                             )}
                                         </Card>

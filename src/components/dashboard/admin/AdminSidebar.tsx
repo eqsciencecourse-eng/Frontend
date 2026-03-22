@@ -40,12 +40,6 @@ export default function AdminSidebar({ activeTab, onTabChange }: AdminSidebarPro
             ]
         },
         {
-            title: 'ระบบทะเบียนนักเรียนเก่า',
-            items: [
-                { id: 'registry', label: 'ทะเบียนนักเรียน', icon: FileSpreadsheet },
-            ]
-        },
-        {
             title: 'ระบบครู',
             items: [
                 { id: 'users', label: 'ระบบสร้างบัญชีครู', icon: GraduationCap },

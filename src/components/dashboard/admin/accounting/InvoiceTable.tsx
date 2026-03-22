@@ -8,6 +8,7 @@ import { FileText, Download, Eye, Upload, FileSpreadsheet } from 'lucide-react';
 import { format } from 'date-fns';
 import { th } from 'date-fns/locale';
 import { toast } from 'sonner';
+import { TablePdfService } from '@/services/tablePdfService';
 
 export default function InvoiceTable() {
     const { user } = useAuth();
@@ -20,6 +21,7 @@ export default function InvoiceTable() {
     }, []);
 
     const fetchInvoices = async () => {
+        // ... (Same fetchInvoices logic)
         try {
             const token = await user?.getIdToken();
             const res = await fetch(API_ENDPOINTS.ACCOUNTING.BASE, {
@@ -37,10 +39,50 @@ export default function InvoiceTable() {
         }
     };
 
+    const handleExportPDF = async (invoice: any, autoDownload: boolean = true) => {
+        const loadingToast = toast.loading('กำลังสร้างไฟล์ PDF...');
+        try {
+            const fileName = `Invoice_${invoice.customerName}_${format(new Date(invoice.paymentDate), 'yyyyMMdd')}.pdf`;
+
+            await TablePdfService.generateTablePDF({
+                title: 'ใบเสร็จรับเงิน (Receipt)',
+                subtitle: `ข้อมูล ณ วันที่: ${format(new Date(), 'dd/MM/yyyy')}`,
+                fileName: fileName,
+                autoDownload: autoDownload,
+                tableOptions: {
+                    head: [['รายการ', 'รายละเอียด']],
+                    body: [
+                        ['ชื่อ-สกุลนักเรียน', invoice.customerName || '-'],
+                        ['วันที่ชำระเงิน', invoice.paymentDate ? format(new Date(invoice.paymentDate), 'dd/MM/yyyy', { locale: th }) : '-'],
+                        ['จำนวนเงิน', `${Number(invoice.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })} บาท`],
+                        ['คอร์ส / ระดับชั้น', invoice.classLevel || '-'],
+                        ['ช่วงเวลาเรียน', `${invoice.periodStart ? format(new Date(invoice.periodStart), 'dd/MM/yyyy') : '-'} ถึง ${invoice.periodEnd ? format(new Date(invoice.periodEnd), 'dd/MM/yyyy') : '-'}`],
+                        ['เวลาที่โอน', invoice.paymentTime || '-']
+                    ],
+                    columnStyles: {
+                        0: { cellWidth: 50, fontStyle: 'bold' },
+                        1: { cellWidth: 'auto' }
+                    }
+                },
+                onBeforeSave: (doc) => {
+                    if (!autoDownload) {
+                        window.open(doc.output('bloburl'), '_blank');
+                    }
+                }
+            });
+            toast.success('สำเร็จ!', { id: loadingToast });
+        } catch (error) {
+            console.error('PDF Export error:', error);
+            toast.error('เกิดข้อผิดพลาดในการสร้าง PDF', { id: loadingToast });
+        }
+    };
+
     const handleImportClick = () => {
+        // ... (Existing handleImportClick)
         fileInputRef.current?.click();
     };
 
+    // ... rest of handleFileChange and helpers
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
@@ -69,7 +111,6 @@ export default function InvoiceTable() {
             console.error('Import error:', error);
             toast.error(error.message || 'Failed to import Excel', { id: loadingToast });
         } finally {
-            // Reset input
             if (fileInputRef.current) fileInputRef.current.value = '';
         }
     };
@@ -78,7 +119,6 @@ export default function InvoiceTable() {
         <div className="space-y-4">
             <h2 className="text-2xl font-bold text-center text-slate-800 mb-6">ใบเสร็จนักเรียน</h2>
 
-            {/* Filters (Mock UI for now as per Image 1) */}
             <div className="flex gap-2 justify-center mb-6">
                 <select className="border rounded-none px-3 py-2 text-sm"><option>เลือกวันที่ชำระเงิน</option></select>
                 <select className="border rounded-none px-3 py-2 text-sm"><option>เลือกเดือนที่ชำระเงิน</option></select>
@@ -148,10 +188,18 @@ export default function InvoiceTable() {
                                 </td>
                                 <td className="px-4 py-3 text-center">
                                     <div className="flex flex-col gap-1 items-center">
-                                        <Button size="sm" className="h-7 w-24 bg-teal-500 hover:bg-teal-600 text-white rounded-none text-xs">
+                                        <Button
+                                            size="sm"
+                                            className="h-7 w-24 bg-teal-500 hover:bg-teal-600 text-white rounded-none text-xs"
+                                            onClick={() => handleExportPDF(inv, false)}
+                                        >
                                             <Eye className="w-3 h-3 mr-1" /> View PDF
                                         </Button>
-                                        <Button size="sm" className="h-7 w-24 bg-red-500 hover:bg-red-600 text-white rounded-none text-xs">
+                                        <Button
+                                            size="sm"
+                                            className="h-7 w-24 bg-red-500 hover:bg-red-600 text-white rounded-none text-xs"
+                                            onClick={() => handleExportPDF(inv, true)}
+                                        >
                                             <Download className="w-3 h-3 mr-1" /> Download
                                         </Button>
                                     </div>

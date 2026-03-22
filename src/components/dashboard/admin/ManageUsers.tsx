@@ -9,6 +9,8 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogD
 import { Loader2, Search, Filter, Eye, Trash2, UserCheck, Shield, Key, Copy, Edit2, Save, X, BookOpen, RefreshCw, Cpu, Wifi, BarChart3, Database, Globe, Cat, Box, Terminal, Gamepad2, Code2, Puzzle, Layout, Clock, User as UserIcon, CheckCircle, XCircle, MoreVertical, Calendar, LogOut, ChevronRight, FileText, Plus, History as HistoryIcon, Upload, FileSpreadsheet, Settings } from 'lucide-react';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import {
     Select,
     SelectContent,
@@ -129,31 +131,149 @@ export default function ManageUsers({ mode = 'manual' }: { mode?: 'manual' | 're
     const [isImporting, setIsImporting] = useState(false); // [NEW] Import State
     const [isSanitizing, setIsSanitizing] = useState(false);
 
-    const handleSanitizeSystem = async () => {
-        if (!confirm('คุณแน่ใจหรือไม่ที่จะ "ล้างระบบเช็คชื่อ"?\n\nการกระทำนี้จะ:\n1. แก้ไขข้อมูลเช็คชื่อที่ผิดพลาดทั้งหมด\n2. รีเซ็ตและคำนวณยอดโควต้าเรียนใหม่ทุกคน\n\n(ควรทำเมื่อข้อมูลไม่ตรงกันเท่านั้น)')) return;
+    // [REMOVED] handleSanitizeSystem
 
-        setIsSanitizing(true);
+    const handleExportPDF = async () => {
+        if (users.length === 0) {
+            toast.error('ไม่พบข้อมูลผู้ใช้');
+            return;
+        }
+
+        const toastId = toast.loading('กำลังเตรียมข้อมูล PDF...');
+
         try {
-            const token = await currentUser?.getIdToken();
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/attendance/sanitize`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`
+            // 1. Prepare Data
+            let subjectsToExport: string[] = [];
+            if (exportSubject === 'all') {
+                subjectsToExport = availableSubjects;
+            } else {
+                subjectsToExport = [exportSubject];
+            }
+
+            const doc = new jsPDF();
+
+            // 2. Load Thai Fonts (Regular & Bold)
+            const loadFonts = async () => {
+                try {
+                    const [regRes, boldRes] = await Promise.all([
+                        fetch('https://raw.githubusercontent.com/cadsondemak/Sarabun/master/fonts/Sarabun-Regular.ttf'),
+                        fetch('https://raw.githubusercontent.com/cadsondemak/Sarabun/master/fonts/Sarabun-Bold.ttf')
+                    ]);
+
+                    if (!regRes.ok || !boldRes.ok) throw new Error('Font fetch failed');
+
+                    const [regBlob, boldBlob] = await Promise.all([
+                        regRes.blob(),
+                        boldRes.blob()
+                    ]);
+
+                    const loadFontFile = (blob: Blob, filename: string, fontName: string, fontStyle: string) => {
+                        return new Promise<void>((resolve) => {
+                            const reader = new FileReader();
+                            reader.onloadend = () => {
+                                const fontBase64 = reader.result?.toString().split(',')[1];
+                                if (fontBase64) {
+                                    doc.addFileToVFS(filename, fontBase64);
+                                    doc.addFont(filename, fontName, fontStyle);
+                                }
+                                resolve();
+                            };
+                            reader.readAsDataURL(blob);
+                        });
+                    };
+
+                    await Promise.all([
+                        loadFontFile(regBlob, 'Sarabun-Regular.ttf', 'Sarabun', 'normal'),
+                        loadFontFile(boldBlob, 'Sarabun-Bold.ttf', 'Sarabun', 'bold')
+                    ]);
+
+                    doc.setFont('Sarabun', 'normal'); // Set default
+
+                } catch (e) {
+                    console.warn('Failed to load Thai fonts', e);
                 }
-            });
+            };
 
-            if (!res.ok) throw new Error('Sanitize failed');
+            await loadFonts();
 
-            const result = await res.json();
-            toast.success('ล้างระบบเรียบร้อย!', {
-                description: `Cleaned: ${result.cleanedRecords}, Updated Quotas: ${result.recalculation?.updatedCount || 0}`
-            });
-            fetchAllUsers(); // Refresh UI
+            // 3. Generate Content
+            let connectionY = 20; // Start Y position
+
+            // Header
+            doc.setFontSize(18);
+            doc.text('รายชื่อนักเรียน (Student List)', 14, 15);
+            doc.setFontSize(10);
+            doc.text(`ข้อมูล ณ วันที่: ${new Date().toLocaleDateString('th-TH')}`, 14, 22);
+            connectionY += 10;
+
+            let grandTotal = 0;
+
+            for (const subject of subjectsToExport) {
+                const subjectUsers = users.filter(u =>
+                    u.role === 'student' &&
+                    (u.enrolledSubjects?.includes(subject) || u.registeredClasses?.some(c => c.className === subject) || u.registeredCourses?.some(rc => rc.subject === subject))
+                );
+
+                if (subjectUsers.length === 0) continue;
+
+                // Subject Header
+                doc.setFontSize(14);
+                // doc.setTextColor(0, 0, 0);
+                doc.text(`วิชา: ${subject} (${subjectUsers.length} คน)`, 14, connectionY + 10);
+                connectionY += 15;
+
+                // Table Rows
+                const tableData = subjectUsers.map((user, index) => [
+                    index + 1,
+                    user.studentId || user.studentIdMap || '-',
+                    user.displayName || user.studentName || '-',
+                    user.nickname || '-',
+                    user.studentPhone || '-',
+                    user.parentName || '-',
+                    user.parentPhone || '-',
+                    STATUS_MAP[user.status || 'studying']?.label || 'กำลังเรียน'
+                ]);
+
+                autoTable(doc, {
+                    startY: connectionY,
+                    head: [['#', 'ID', 'ชื่อ-นามสกุล', 'ชื่อเล่น', 'เบอร์โทร', 'ผู้ปกครอง', 'เบอร์ผู้ปกครอง', 'สถานะ']],
+                    body: tableData,
+                    styles: { font: 'Sarabun', fontSize: 10, cellPadding: 2 },
+                    headStyles: { fillColor: [67, 56, 202], textColor: 255, fontStyle: 'bold' }, // Indigo-700
+                    columnStyles: {
+                        0: { cellWidth: 10 },
+                        1: { cellWidth: 20 },
+                        2: { cellWidth: 40 },
+                        3: { cellWidth: 20 },
+                        4: { cellWidth: 25 },
+                        5: { cellWidth: 30 },
+                        6: { cellWidth: 25 },
+                        7: { cellWidth: 20 }
+                    },
+                    margin: { top: 20 },
+                    didDrawPage: (data) => {
+                        // Header on new pages?
+                    }
+                });
+
+                // Update Y for next table
+                // @ts-ignore
+                connectionY = doc.lastAutoTable.finalY + 10;
+                grandTotal += subjectUsers.length;
+            }
+
+            // Footer Summary
+            doc.setFontSize(12);
+            doc.text(`รวมทั้งหมด: ${grandTotal} คน`, 14, connectionY + 10);
+
+            doc.save(`Student_List_${new Date().toISOString().split('T')[0]}.pdf`);
+            toast.dismiss(toastId);
+            toast.success('ดาวน์โหลด PDF สำเร็จ');
+
         } catch (error) {
-            console.error(error);
-            toast.error('เกิดข้อผิดพลาดในการล้างระบบ');
-        } finally {
-            setIsSanitizing(false);
+            console.error('PDF Export Error:', error);
+            toast.dismiss(toastId);
+            toast.error('เกิดข้อผิดพลาดในการสร้าง PDF');
         }
     };
 
@@ -991,14 +1111,14 @@ export default function ManageUsers({ mode = 'manual' }: { mode?: 'manual' | 're
                                 </CardDescription>
                             </div>
                             <div className="flex items-center gap-2">
+                                {/* Sanitize removed */}
                                 <Button
                                     variant="outline"
-                                    className="gap-2 border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 rounded-none h-9 text-sm mr-2"
-                                    onClick={handleSanitizeSystem}
-                                    disabled={isSanitizing}
+                                    className="gap-2 border-slate-200 text-slate-600 hover:bg-slate-50 rounded-none h-9 text-sm mr-2"
+                                    onClick={handleExportPDF}
                                 >
-                                    {isSanitizing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-                                    ล้างระบบเช็คชื่อ (Sanitize)
+                                    <FileText className="h-4 w-4 text-red-600" />
+                                    Export PDF
                                 </Button>
 
                                 <Button
@@ -1436,6 +1556,39 @@ export default function ManageUsers({ mode = 'manual' }: { mode?: 'manual' | 're
                                                     ) : <div className="text-sm font-medium border-b border-dashed border-slate-200 pb-1">{selectedUser.birthDate || '-'}</div>}
                                                 </div>
 
+                                                {/* Gender [NEW] */}
+                                                <div className="space-y-1">
+                                                    <Label className="text-xs text-slate-500 uppercase font-semibold">เพศ</Label>
+                                                    {isEditing ? (
+                                                        <Select value={editForm.gender || ''} onValueChange={(val) => setEditForm({ ...editForm, gender: val })}>
+                                                            <SelectTrigger className="h-9 rounded-none border-slate-200">
+                                                                <SelectValue placeholder="เลือกเพศ" />
+                                                            </SelectTrigger>
+                                                            <SelectContent className="rounded-none">
+                                                                <SelectItem value="ชาย">ชาย</SelectItem>
+                                                                <SelectItem value="หญิง">หญิง</SelectItem>
+                                                                <SelectItem value="อื่นๆ">อื่นๆ</SelectItem>
+                                                            </SelectContent>
+                                                        </Select>
+                                                    ) : <div className="text-sm font-medium border-b border-dashed border-slate-200 pb-1">{selectedUser.gender || '-'}</div>}
+                                                </div>
+
+                                                {/* Ethnicity [NEW] */}
+                                                <div className="space-y-1">
+                                                    <Label className="text-xs text-slate-500 uppercase font-semibold">เชื้อชาติ</Label>
+                                                    {isEditing ? (
+                                                        <Input value={editForm.ethnicity || ''} onChange={(e) => setEditForm({ ...editForm, ethnicity: e.target.value })} className="rounded-none h-9" placeholder="เช่น ไทย" />
+                                                    ) : <div className="text-sm font-medium border-b border-dashed border-slate-200 pb-1">{selectedUser.ethnicity || '-'}</div>}
+                                                </div>
+
+                                                {/* Religion [NEW] */}
+                                                <div className="space-y-1">
+                                                    <Label className="text-xs text-slate-500 uppercase font-semibold">ศาสนา</Label>
+                                                    {isEditing ? (
+                                                        <Input value={editForm.religion || ''} onChange={(e) => setEditForm({ ...editForm, religion: e.target.value })} className="rounded-none h-9" placeholder="เช่น พุทธ, คริสต์" />
+                                                    ) : <div className="text-sm font-medium border-b border-dashed border-slate-200 pb-1">{selectedUser.religion || '-'}</div>}
+                                                </div>
+
                                                 {/* Student Phone [NEW] */}
                                                 <div className="space-y-1">
                                                     <Label className="text-xs text-slate-500 uppercase font-semibold">เบอร์โทรศัพท์ (นักเรียน)</Label>
@@ -1588,6 +1741,10 @@ export default function ManageUsers({ mode = 'manual' }: { mode?: 'manual' | 're
                                                                 // If hasQuota, only expire if quota reached. Else check time.
                                                                 const isExpired = hasQuota ? isQuotaExpired : isTimeExpired;
 
+                                                                const targetUserRegCourses = isEditing ? editForm.registeredCourses : selectedUser.registeredCourses;
+                                                                const targetUserEnrolled = isEditing ? editForm.enrolledSubjects : selectedUser.enrolledSubjects;
+                                                                const regCourseIdx = (targetUserRegCourses || []).findIndex((c: any) => c.subject === course.subject);
+
                                                                 return (
                                                                     <tr key={idx} className={`hover:bg-slate-50/50 transition-colors ${(course.status === 'drop' || course.status === 'resigned') ? 'bg-orange-50/30' :
                                                                         (course.status === 'graduated') ? 'bg-indigo-50/30' :
@@ -1671,7 +1828,7 @@ export default function ManageUsers({ mode = 'manual' }: { mode?: 'manual' | 're
                                                                                     size="sm"
                                                                                     variant="default"
                                                                                     className="h-6 text-[10px] mt-2 rounded-none px-2 w-full bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm flex items-center justify-center gap-1"
-                                                                                    onClick={() => openExtensionDialog(idx, course.endDate)}
+                                                                                    onClick={() => openExtensionDialog(regCourseIdx, course.endDate)}
                                                                                 >
                                                                                     <RefreshCw className="w-3 h-3" /> ต่ออายุ
                                                                                 </Button>
@@ -1684,7 +1841,8 @@ export default function ManageUsers({ mode = 'manual' }: { mode?: 'manual' | 're
                                                                                         variant="ghost"
                                                                                         size="sm"
                                                                                         className={`h-6 w-full text-[10px] rounded-none justify-end px-0 mb-1 ${course.isLegacy ? 'text-slate-400 cursor-not-allowed' : 'text-indigo-500 hover:text-indigo-700'}`}
-                                                                                        onClick={() => handleOpenEditSchedule(idx, course)}
+                                                                                        onClick={() => handleOpenEditSchedule(regCourseIdx, course)}
+                                                                                        disabled={course.isLegacy}
                                                                                     >
                                                                                         <Settings className="w-3 h-3 mr-1" /> ตั้งค่า
                                                                                     </Button>
@@ -1693,9 +1851,14 @@ export default function ManageUsers({ mode = 'manual' }: { mode?: 'manual' | 're
                                                                                         size="sm"
                                                                                         className="h-6 w-full text-red-400 hover:text-red-600 text-[10px] rounded-none justify-end px-0"
                                                                                         onClick={() => {
-                                                                                            if (confirm('ลบคอร์สนี้?')) {
-                                                                                                const updated = (editForm.registeredCourses || []).filter((_, i) => i !== idx);
-                                                                                                setEditForm({ ...editForm, registeredCourses: updated });
+                                                                                            if (confirm('ยืนยันการลบคอร์สเรียนรายวิชานี้?')) {
+                                                                                                const updatedReg = (targetUserRegCourses || []).filter((c: any) => c.subject !== course.subject);
+                                                                                                const updatedLegacy = (targetUserEnrolled || []).filter((s: string) => s !== course.subject);
+                                                                                                setEditForm({ 
+                                                                                                    ...editForm, 
+                                                                                                    registeredCourses: updatedReg,
+                                                                                                    enrolledSubjects: updatedLegacy
+                                                                                                });
                                                                                             }
                                                                                         }}
                                                                                     >

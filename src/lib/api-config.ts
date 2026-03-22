@@ -50,6 +50,8 @@ export const API_ENDPOINTS = {
     // [NEW] Continuous Evaluation
     EVALUATIONS: {
         CREATE: `${API_BASE}${API_PREFIX}/evaluations`,
+        UPDATE: (id: string) => `${API_BASE}${API_PREFIX}/evaluations/${id}`,
+        DELETE: (id: string) => `${API_BASE}${API_PREFIX}/evaluations/${id}`,
         GET_STUDENT_SUMMARY: (id: string) => `${API_BASE}${API_PREFIX}/evaluations/student/${id}/summary`,
         GET_STUDENT_HISTORY: (id: string) => `${API_BASE}${API_PREFIX}/evaluations/student/${id}/history`,
     },

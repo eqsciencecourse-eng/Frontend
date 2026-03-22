@@ -101,6 +101,9 @@ export default function CreateUser() {
         nickname: '',
         birthDate: '', // [NEW]
         age: '', // [NEW]
+        gender: '', // [NEW]
+        ethnicity: '', // [NEW]
+        religion: '', // [NEW]
         studentPhone: '', // [NEW]
         address: '', // [NEW]
         school: '',
@@ -316,6 +319,9 @@ export default function CreateUser() {
                     nickname: formData.nickname,
                     birthDate: formData.birthDate,
                     age: Number(formData.age),
+                    gender: formData.gender,
+                    ethnicity: formData.ethnicity,
+                    religion: formData.religion,
                     studentPhone: formData.studentPhone,
                     address: formData.address,
                     school: formData.school,
@@ -361,6 +367,9 @@ export default function CreateUser() {
                         nickname: '',
                         birthDate: '',
                         age: '',
+                        gender: '',
+                        ethnicity: '',
+                        religion: '',
                         studentPhone: '',
                         address: '',
                         school: '',
@@ -621,6 +630,33 @@ export default function CreateUser() {
                         <div className="space-y-2">
                             <Label className="font-semibold text-gray-700">อายุ</Label>
                             <Input name="age" type="number" placeholder="อายุ" value={formData.age} onChange={handleChange} className="h-11 rounded-none border-slate-200" />
+                        </div>
+
+                        {/* Gender */}
+                        <div className="space-y-2">
+                            <Label className="font-semibold text-gray-700">เพศ</Label>
+                            <Select value={formData.gender} onValueChange={(val) => handleSelectChange('gender', val)}>
+                                <SelectTrigger className="h-11 rounded-none border-slate-200">
+                                    <SelectValue placeholder="เลือกเพศ" />
+                                </SelectTrigger>
+                                <SelectContent className="rounded-none">
+                                    <SelectItem value="ชาย">ชาย</SelectItem>
+                                    <SelectItem value="หญิง">หญิง</SelectItem>
+                                    <SelectItem value="อื่นๆ">อื่นๆ</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        {/* Ethnicity */}
+                        <div className="space-y-2">
+                            <Label className="font-semibold text-gray-700">เชื้อชาติ</Label>
+                            <Input name="ethnicity" placeholder="เช่น ไทย" value={formData.ethnicity} onChange={handleChange} className="h-11 rounded-none border-slate-200" />
+                        </div>
+
+                        {/* Religion */}
+                        <div className="space-y-2">
+                            <Label className="font-semibold text-gray-700">ศาสนา</Label>
+                            <Input name="religion" placeholder="เช่น พุทธ, คริสต์, อิสลาม" value={formData.religion} onChange={handleChange} className="h-11 rounded-none border-slate-200" />
                         </div>
 
                         {/* Phone */}

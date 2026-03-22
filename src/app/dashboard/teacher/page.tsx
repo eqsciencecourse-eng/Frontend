@@ -180,7 +180,10 @@ function TeacherDashboardContent() {
             // 2. New Registered Courses Check
             // Ensure registeredCourses is an array before iterating
             if (Array.isArray(s.registeredCourses)) {
-                const hasCourseWithTeacher = s.registeredCourses.some((c: any) => normalizeId(c.teacherId) === teacherId);
+                const hasCourseWithTeacher = s.registeredCourses.some((c: any) => {
+                    const isCourseActive = !c.status || c.status === 'active';
+                    return normalizeId(c.teacherId) === teacherId && isCourseActive;
+                });
                 if (hasCourseWithTeacher) return true;
             }
 
@@ -204,7 +207,8 @@ function TeacherDashboardContent() {
                 if (registeredCourse) {
                     // Strictly check if it belongs to THIS teacher
                     const isMine = normalizeId(registeredCourse.teacherId) === normalizeId(user._id || user.id);
-                    return isMine && (s.status !== 'drop' && s.status !== 'resigned');
+                    const isCourseActive = !registeredCourse.status || registeredCourse.status === 'active';
+                    return isMine && isCourseActive && (s.status !== 'drop' && s.status !== 'resigned');
                 }
 
                 // 2. Legacy Check (Fallback)

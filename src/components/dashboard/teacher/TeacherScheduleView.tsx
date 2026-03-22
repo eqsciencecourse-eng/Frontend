@@ -89,7 +89,10 @@ export default function TeacherScheduleView({ students, subjects, user }: Teache
                 }
 
                 // New Registration
-                if (s.registeredCourses?.some((c: any) => c.subject === subject.name && c.teacherId === (user._id || user.id))) return true;
+                if (s.registeredCourses?.some((c: any) => {
+                    const isCourseActive = !c.status || c.status === 'active';
+                    return c.subject === subject.name && c.teacherId === (user._id || user.id) && isCourseActive;
+                })) return true;
 
                 return false;
             });
