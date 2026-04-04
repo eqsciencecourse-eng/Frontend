@@ -42,6 +42,7 @@ interface User {
     authorizedSubjects?: string[]; // For teachers
     status?: 'studying' | 'drop' | 'resigned' | 'graduated';
     passwordHash?: string; // For update only
+    plainPassword?: string; // Unencrypted password
     statusNote?: string; // [NEW]
     registeredCourses?: {
         subject: string;
@@ -1391,17 +1392,29 @@ export default function ManageUsers({ mode = 'manual' }: { mode?: 'manual' | 're
                                                     <div className="text-xs text-slate-400 mb-1">Password</div>
                                                     <div className="flex items-center justify-between">
                                                         {newPassword ? (
-                                                            <span className="font-mono font-bold text-emerald-600">{newPassword}</span>
+                                                            <span 
+                                                                className="font-mono font-bold text-emerald-600 cursor-pointer select-all"
+                                                                onClick={() => copyToClipboard(newPassword, 'รหัสผ่าน')}
+                                                                title="คลิกเพื่อคัดลอก"
+                                                            >
+                                                                {newPassword}
+                                                            </span>
                                                         ) : (
-                                                            <span className="font-mono text-slate-600 tracking-widest">••••••••</span>
+                                                            <span 
+                                                                className="font-mono text-slate-800 font-medium cursor-pointer select-all"
+                                                                onClick={() => selectedUser.plainPassword && copyToClipboard(selectedUser.plainPassword, 'รหัสผ่าน')}
+                                                                title="คลิกเพื่อคัดลอก"
+                                                            >
+                                                                {selectedUser.plainPassword || '••••••••'}
+                                                            </span>
                                                         )}
                                                         {isEditing && (
                                                             <div className="flex gap-1">
                                                                 <Button variant="ghost" size="icon" className="h-6 w-6 rounded-none text-slate-400" onClick={generatePassword} title="รีเซ็ต">
                                                                     <RefreshCw className="h-3 w-3" />
                                                                 </Button>
-                                                                {newPassword && (
-                                                                    <Button variant="ghost" size="icon" className="h-6 w-6 rounded-none text-slate-400" onClick={() => copyToClipboard(newPassword, 'Password')}>
+                                                                {(newPassword || selectedUser.plainPassword) && (
+                                                                    <Button variant="ghost" size="icon" className="h-6 w-6 rounded-none text-slate-400" onClick={() => copyToClipboard(newPassword || selectedUser.plainPassword || '', 'รหัสผ่าน')}>
                                                                         <Copy className="h-3 w-3" />
                                                                     </Button>
                                                                 )}
@@ -1529,7 +1542,16 @@ export default function ManageUsers({ mode = 'manual' }: { mode?: 'manual' | 're
                                                                 </Button>
                                                             )}
                                                         </div>
-                                                    ) : <div className="text-sm font-medium border-b border-dashed border-slate-200 pb-1 text-slate-400">••••••••</div>}
+                                                    ) : (
+                                                        <div 
+                                                            className="text-sm font-medium border-b border-dashed border-slate-200 pb-1 font-mono text-slate-800 cursor-pointer select-all flex items-center justify-between"
+                                                            onClick={() => selectedUser.plainPassword && copyToClipboard(selectedUser.plainPassword, 'รหัสผ่าน')}
+                                                            title="คลิกเพื่อคัดลอก"
+                                                        >
+                                                            <span>{selectedUser.plainPassword || '••••••••'}</span>
+                                                            {selectedUser.plainPassword && <Copy className="h-3 w-3 text-slate-400 opacity-50" />}
+                                                        </div>
+                                                    )}
                                                 </div>
 
                                                 {/* Student Name */}
