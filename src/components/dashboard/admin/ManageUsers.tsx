@@ -20,6 +20,10 @@ import {
 } from '@/components/ui/select';
 import { API_ENDPOINTS } from '@/lib/api-config';
 import { Label } from '@/components/ui/label';
+import { Document, Packer, Paragraph, TextRun, AlignmentType, HeadingLevel } from 'docx';
+import { saveAs } from 'file-saver';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
+import { Download } from 'lucide-react';
 
 interface User {
     _id: string;
@@ -31,6 +35,7 @@ interface User {
     isApproved: boolean;
     createdAt: string;
     nickname?: string; // [NEW]
+    citizenId?: string; // [NEW] เลขบัตรประชาชน
     studentClass?: string;
     studentName?: string;
     parentName?: string;
@@ -596,6 +601,154 @@ export default function ManageUsers({ mode = 'manual' }: { mode?: 'manual' | 're
     const copyToClipboard = (text: string, label: string) => {
         navigator.clipboard.writeText(text);
         toast.success(`คัดลอก ${label} แล้ว`);
+    };
+
+    const exportSingleUserWord = async (userToExport: User) => {
+        if (!userToExport) return;
+        try {
+            const doc = new Document({
+                sections: [
+                    {
+                        properties: {},
+                        children: [
+                            new Paragraph({
+                                text: `ประวัตินักเรียน: ${userToExport.studentName || userToExport.displayName || '-'}`,
+                                heading: HeadingLevel.HEADING_1,
+                                alignment: AlignmentType.CENTER,
+                            }),
+                            new Paragraph({ text: ` ` }),
+                            new Paragraph({
+                                children: [
+                                    new TextRun({ text: "ข้อมูลส่วนตัว", bold: true, size: 28 }),
+                                ],
+                            }),
+                            new Paragraph({ text: `รหัสนักเรียน: ${userToExport.studentId || userToExport.studentIdMap || '-'}` }),
+                            new Paragraph({ text: `เลขบัตรประชาชน: ${userToExport.citizenId || '-'}` }),
+                            new Paragraph({ text: `ชื่อเล่น: ${userToExport.nickname || '-'}` }),
+                            new Paragraph({ text: `ระดับการศึกษา: ${userToExport.educationLevel ? EDUCATION_LEVEL_MAP[userToExport.educationLevel] || userToExport.educationLevel : '-'}` }),
+                            new Paragraph({ text: `โรงเรียน: ${userToExport.school || '-'}` }),
+                            new Paragraph({ text: `วันเกิด: ${userToExport.birthDate || '-'}` }),
+                            new Paragraph({ text: `อายุ: ${userToExport.age || '-'}` }),
+                            new Paragraph({ text: `เพศ: ${userToExport.gender || '-'}` }),
+                            new Paragraph({ text: `เบอร์โทรศัพท์(นักเรียน): ${userToExport.studentPhone || '-'}` }),
+                            new Paragraph({ text: `ที่อยู่: ${userToExport.address || '-'}` }),
+                            new Paragraph({ text: ` ` }),
+                            new Paragraph({
+                                children: [
+                                    new TextRun({ text: "ข้อมูลผู้ปกครอง", bold: true, size: 28 }),
+                                ],
+                            }),
+                            new Paragraph({ text: `ชื่อผู้ปกครอง: ${userToExport.parentName || '-'}` }),
+                            new Paragraph({ text: `ความสัมพันธ์: ${userToExport.parentRelation || '-'}` }),
+                            new Paragraph({ text: `เบอร์โทรศัพท์(ผู้ปกครอง): ${userToExport.parentPhone || '-'}` }),
+                            new Paragraph({ text: `ที่อยู่ผู้ปกครอง: ${userToExport.parentAddress || '-'}` }),
+                            new Paragraph({ text: ` ` }),
+                            new Paragraph({
+                                children: [
+                                    new TextRun({ text: "สถานะการเรียน", bold: true, size: 28 }),
+                                ],
+                            }),
+                            new Paragraph({ text: `สถานะ: ${STATUS_MAP[userToExport.status || 'studying']?.label || 'กำลังเรียน'}` }),
+                        ],
+                    },
+                ],
+            });
+
+            const blob = await Packer.toBlob(doc);
+            saveAs(blob, `Student_Profile_${userToExport.studentId || userToExport.username || 'Export'}.docx`);
+            toast.success('ส่งออกไฟล์ Word สำเร็จ');
+        } catch (error) {
+            console.error('Export Word Error:', error);
+            toast.error('เกิดข้อผิดพลาดในการสร้างไฟล์ Word');
+        }
+    };
+
+    const exportSingleUserPDF = async (userToExport: User) => {
+        if (!userToExport) return;
+        const toastId = toast.loading('กำลังเตรียมข้อมูล PDF...');
+        try {
+            const doc = new jsPDF();
+            
+            const [regRes, boldRes] = await Promise.all([
+                fetch('https://raw.githubusercontent.com/cadsondemak/Sarabun/master/fonts/Sarabun-Regular.ttf'),
+                fetch('https://raw.githubusercontent.com/cadsondemak/Sarabun/master/fonts/Sarabun-Bold.ttf')
+            ]);
+            const [regBlob, boldBlob] = await Promise.all([regRes.blob(), boldRes.blob()]);
+
+            const loadFontFile = (blob: Blob, filename: string, fontName: string, fontStyle: string) => {
+                return new Promise<void>((resolve) => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => {
+                        const fontBase64 = reader.result?.toString().split(',')[1];
+                        if (fontBase64) {
+                            doc.addFileToVFS(filename, fontBase64);
+                            doc.addFont(filename, fontName, fontStyle);
+                        }
+                        resolve();
+                    };
+                    reader.readAsDataURL(blob);
+                });
+            };
+
+            await Promise.all([
+                loadFontFile(regBlob, 'Sarabun-Regular.ttf', 'Sarabun', 'normal'),
+                loadFontFile(boldBlob, 'Sarabun-Bold.ttf', 'Sarabun', 'bold')
+            ]);
+
+            doc.setFont('Sarabun', 'normal');
+            
+            doc.setFontSize(20);
+            doc.setFont('Sarabun', 'bold');
+            doc.text(`ประวัตินักเรียน: ${userToExport.studentName || userToExport.displayName || '-'}`, 14, 20);
+            
+            doc.setFontSize(14);
+            doc.text('ข้อมูลส่วนตัว', 14, 35);
+            
+            doc.setFontSize(12);
+            doc.setFont('Sarabun', 'normal');
+            doc.text(`รหัสนักเรียน: ${userToExport.studentId || userToExport.studentIdMap || '-'}`, 14, 45);
+            doc.text(`เลขบัตรประชาชน: ${userToExport.citizenId || '-'}`, 100, 45);
+            
+            doc.text(`ชื่อเล่น: ${userToExport.nickname || '-'}`, 14, 55);
+            doc.text(`ระดับการศึกษา: ${userToExport.educationLevel ? EDUCATION_LEVEL_MAP[userToExport.educationLevel] || userToExport.educationLevel : '-'}`, 100, 55);
+            
+            doc.text(`โรงเรียน: ${userToExport.school || '-'}`, 14, 65);
+            doc.text(`วันเกิด: ${userToExport.birthDate || '-'}`, 100, 65);
+            
+            doc.text(`อายุ: ${userToExport.age || '-'}`, 14, 75);
+            doc.text(`เพศ: ${userToExport.gender || '-'}`, 100, 75);
+            
+            doc.text(`เบอร์โทรศัพท์(นักเรียน): ${userToExport.studentPhone || '-'}`, 14, 85);
+            doc.text(`ที่อยู่: ${userToExport.address || '-'}`, 14, 95);
+            
+            doc.setFontSize(14);
+            doc.setFont('Sarabun', 'bold');
+            doc.text('ข้อมูลผู้ปกครอง', 14, 115);
+            
+            doc.setFontSize(12);
+            doc.setFont('Sarabun', 'normal');
+            doc.text(`ชื่อผู้ปกครอง: ${userToExport.parentName || '-'}`, 14, 125);
+            doc.text(`ความสัมพันธ์: ${userToExport.parentRelation || '-'}`, 100, 125);
+            
+            doc.text(`เบอร์โทรศัพท์(ผู้ปกครอง): ${userToExport.parentPhone || '-'}`, 14, 135);
+            doc.text(`ที่อยู่ผู้ปกครอง: ${userToExport.parentAddress || '-'}`, 14, 145);
+            
+            doc.setFontSize(14);
+            doc.setFont('Sarabun', 'bold');
+            doc.text('สถานะการเรียน', 14, 165);
+            
+            doc.setFontSize(12);
+            doc.setFont('Sarabun', 'normal');
+            doc.text(`สถานะ: ${STATUS_MAP[userToExport.status || 'studying']?.label || 'กำลังเรียน'}`, 14, 175);
+            
+            doc.save(`Student_Profile_${userToExport.studentId || userToExport.username || 'Export'}.pdf`);
+            toast.dismiss(toastId);
+            toast.success('ดาวน์โหลด PDF สำเร็จ');
+        } catch (error) {
+            toast.dismiss(toastId);
+            console.error('PDF Export Error:', error);
+            toast.error('เกิดข้อผิดพลาดในการสร้าง PDF');
+        }
     };
 
     const getRoleBadge = (role: string, isApproved: boolean) => {
@@ -1335,6 +1488,28 @@ export default function ManageUsers({ mode = 'manual' }: { mode?: 'manual' | 're
                                     {getRoleBadge(selectedUser.role, selectedUser.isApproved)}
                                 </div>
                                 <div className="flex gap-2 mr-8">
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button variant="outline" className="h-9 rounded-none gap-2 border-slate-200 text-slate-600 hover:bg-slate-50">
+                                                <Download className="h-4 w-4" />
+                                                ส่งออกข้อมูล
+                                            </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end" className="w-48 rounded-none">
+                                            <DropdownMenuItem onClick={() => exportSingleUserWord(selectedUser)} className="cursor-pointer gap-2 rounded-none">
+                                                <div className="w-5 h-5 bg-blue-100/50 flex items-center justify-center rounded-sm">
+                                                    <FileText className="h-3 w-3 text-blue-600" />
+                                                </div>
+                                                ส่งออกเป็น Word
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem onClick={() => exportSingleUserPDF(selectedUser)} className="cursor-pointer gap-2 rounded-none">
+                                                <div className="w-5 h-5 bg-red-100/50 flex items-center justify-center rounded-sm">
+                                                    <FileText className="h-3 w-3 text-red-600" />
+                                                </div>
+                                                ส่งออกเป็น PDF
+                                            </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
                                     <Button
                                         onClick={handleEditToggle}
                                         className={`
@@ -1501,6 +1676,20 @@ export default function ManageUsers({ mode = 'manual' }: { mode?: 'manual' | 're
                                                             placeholder="เช่น 1/69"
                                                         />
                                                     ) : <div className="text-sm font-medium border-b border-dashed border-slate-200 pb-1 font-mono">{selectedUser.studentId || '-'}</div>}
+                                                </div>
+
+                                                {/* Citizen ID */}
+                                                <div className="space-y-1">
+                                                    <Label className="text-xs text-slate-500 uppercase font-semibold">เลขบัตรประชาชน</Label>
+                                                    {isEditing ? (
+                                                        <Input
+                                                            value={editForm.citizenId || ''}
+                                                            onChange={(e) => setEditForm({ ...editForm, citizenId: e.target.value })}
+                                                            maxLength={13}
+                                                            className="rounded-none h-9 font-mono"
+                                                            placeholder="เลขประจำตัวประชาชน 13 หลัก"
+                                                        />
+                                                    ) : <div className="text-sm font-medium border-b border-dashed border-slate-200 pb-1 font-mono">{selectedUser.citizenId || '-'}</div>}
                                                 </div>
 
                                                 {/* Username */}

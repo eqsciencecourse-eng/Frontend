@@ -89,6 +89,7 @@ export default function CreateUser() {
     const [formData, setFormData] = useState({
         username: '',
         password: '',
+        citizenId: '', // [NEW]
         parentName: '',
         parentRelation: '', // [NEW]
         parentPhone: '', // [NEW]
@@ -307,6 +308,7 @@ export default function CreateUser() {
                 body: JSON.stringify({
                     username: formData.username,
                     passwordHash: formData.password,
+                    citizenId: formData.citizenId,
                     parentName: formData.parentName,
                     parentRelation: formData.parentRelation,
                     parentPhone: formData.parentPhone,
@@ -355,6 +357,7 @@ export default function CreateUser() {
                     setFormData({
                         username: '',
                         password: '',
+                        citizenId: '',
                         parentName: '',
                         parentRelation: '',
                         parentPhone: '',
@@ -600,6 +603,12 @@ export default function CreateUser() {
                                     <SelectItem value="นางสาว">นางสาว</SelectItem>
                                 </SelectContent>
                             </Select>
+                        </div>
+
+                        {/* Citizen ID */}
+                        <div className="space-y-2 col-span-1 md:col-span-2">
+                            <Label className="font-semibold text-gray-700">เลขประจำตัวประชาชน</Label>
+                            <Input name="citizenId" placeholder="เลขประจำตัวประชาชน 13 หลัก" value={formData.citizenId} onChange={handleChange} maxLength={13} className="h-11 rounded-none border-slate-200" />
                         </div>
 
                         {/* First Name */}

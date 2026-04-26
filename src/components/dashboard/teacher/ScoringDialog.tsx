@@ -148,16 +148,22 @@ export default function ScoringDialog({ isOpen, onClose, student, subject, sheet
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
                     {CRITERIA.map(c => (
-                        <div key={c.id} className="flex items-center justify-between gap-4 p-2 border rounded-lg bg-slate-50">
-                            <Label className="flex-1 text-xs md:text-sm text-slate-700">{c.label}</Label>
-                            <Input
-                                type="number"
-                                min="0"
-                                max="5"
-                                className="w-20 text-center font-bold"
-                                value={scores[c.id] || ''}
-                                onChange={(e) => handleScoreChange(c.id, e.target.value)}
-                            />
+                        <div key={c.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 border rounded-xl bg-slate-50 shadow-sm border-slate-200">
+                            <Label className="flex-1 text-sm text-slate-700 font-medium">{c.label}</Label>
+                            <div className="flex flex-wrap items-center gap-1 justify-start sm:justify-end">
+                                {[0, 1, 2, 3, 4, 5].map((val) => (
+                                    <button
+                                        key={val}
+                                        onClick={() => handleScoreChange(c.id, val.toString())}
+                                        className={`w-8 h-8 md:w-9 md:h-9 rounded-lg text-sm font-bold transition-all shadow-sm
+                                        ${scores[c.id] === val 
+                                            ? 'bg-indigo-600 text-white shadow-indigo-200 scale-110 z-10' 
+                                            : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-100 hover:border-slate-300 border'}`}
+                                    >
+                                        {val}
+                                    </button>
+                                ))}
+                            </div>
                         </div>
                     ))}
                 </div>

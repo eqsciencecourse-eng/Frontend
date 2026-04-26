@@ -764,17 +764,19 @@ export default function TeacherAttendanceModal({ isOpen, onClose, teacher }: Tea
                                                         {cat.items.map(item => (
                                                             <div key={item.id} className="flex items-center justify-between gap-4">
                                                                 <label className="text-xs text-slate-700 w-1/2">{item.label}</label>
-                                                                <div className="flex items-center gap-2 flex-1">
-                                                                    <input
-                                                                        type="range"
-                                                                        min="0"
-                                                                        max={item.max}
-                                                                        step="1"
-                                                                        value={evaluations[student._id]?.[item.id] || 0}
-                                                                        onChange={(e) => handleEvaluationScoreChange(student._id, item.id, parseInt(e.target.value))}
-                                                                        className="flex-1"
-                                                                    />
-                                                                    <span className="text-sm font-bold w-6 text-center">{evaluations[student._id]?.[item.id] || 0}</span>
+                                                                <div className="flex items-center gap-1 justify-end flex-wrap">
+                                                                    {[0, 1, 2, 3, 4, 5].map((val) => (
+                                                                        <button
+                                                                            key={val}
+                                                                            onClick={() => handleEvaluationScoreChange(student._id, item.id, val)}
+                                                                            className={`w-8 h-8 rounded text-sm font-bold transition-all
+                                                                            ${evaluations[student._id]?.[item.id] === val 
+                                                                                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200 scale-110 z-10' 
+                                                                                : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 hover:border-slate-300'}`}
+                                                                        >
+                                                                            {val}
+                                                                        </button>
+                                                                    ))}
                                                                 </div>
                                                             </div>
                                                         ))}

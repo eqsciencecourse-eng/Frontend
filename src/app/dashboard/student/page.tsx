@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import dynamic from 'next/dynamic';
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { BookOpen, Trophy, Settings, User, Clock, ChevronRight, Zap, Sparkles, Star } from 'lucide-react';
+import { BookOpen, Trophy, Settings, User, Clock, ChevronRight, Zap, Sparkles, Star, Download, Award } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -24,6 +24,11 @@ const OfficialReportDownloadModal = dynamic(() => import('@/components/dashboard
     ssr: false
 });
 
+const CertificatePreviewModal = dynamic(() => import('@/components/dashboard/student/CertificatePreviewModal'), {
+    loading: () => null,
+    ssr: false
+});
+
 export default function StudentDashboard() {
     const { user, loading } = useAuth();
 
@@ -36,6 +41,8 @@ export default function StudentDashboard() {
 
     // Modal States
     const [isOfficialReportOpen, setIsOfficialReportOpen] = useState(false);
+    const [isCertificateModalOpen, setIsCertificateModalOpen] = useState(false);
+    const [selectedGradeForCert, setSelectedGradeForCert] = useState<any>(null);
     const [availableSubjects, setAvailableSubjects] = useState<string[]>([]);
     const [pdfData, setPdfData] = useState<any>(null);
 
@@ -247,30 +254,6 @@ export default function StudentDashboard() {
                     </div>
                 </motion.div>
 
-                {/* Dashboard Stats */}
-                <motion.div variants={itemVariants} className="grid grid-cols-2 gap-4 mb-10">
-                    <Card className="border-none shadow-lg shadow-indigo-100/50 bg-white/80 backdrop-blur-md rounded-3xl p-1 relative overflow-hidden group">
-                        <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-purple-500/5 group-hover:from-indigo-500/10 group-hover:to-purple-500/10 transition-colors" />
-                        <div className="relative p-5 flex flex-col items-center text-center">
-                            <div className="h-12 w-12 bg-indigo-100 text-indigo-600 rounded-2xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-300">
-                                <Zap className="w-6 h-6" />
-                            </div>
-                            <span className="text-4xl font-black text-slate-800 mb-1">{attendedCount}</span>
-                            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">เข้าเรียน (ครั้ง)</span>
-                        </div>
-                    </Card>
-
-                    <Card className="border-none shadow-lg shadow-amber-100/50 bg-white/80 backdrop-blur-md rounded-3xl p-1 relative overflow-hidden group">
-                        <div className="absolute inset-0 bg-gradient-to-br from-amber-500/5 to-orange-500/5 group-hover:from-amber-500/10 group-hover:to-orange-500/10 transition-colors" />
-                        <div className="relative p-5 flex flex-col items-center text-center">
-                            <div className="h-12 w-12 bg-amber-100 text-amber-600 rounded-2xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-300">
-                                <Trophy className="w-6 h-6" />
-                            </div>
-                            <span className="text-4xl font-black text-slate-800 mb-1">{files.length}</span>
-                            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">เกียรติบัตร (ใบ)</span>
-                        </div>
-                    </Card>
-                </motion.div>
 
                 {/* Tabs */}
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
@@ -365,34 +348,88 @@ export default function StudentDashboard() {
                             </TabsContent>
 
                             <TabsContent value="files" className="pt-2">
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                                    {files.map((file) => (
-                                        <motion.div
-                                            key={file._id}
-                                            whileHover={{ y: -4 }}
-                                            whileTap={{ scale: 0.98 }}
-                                            onClick={() => window.open(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}/api/files/download/${file.filename}`)}
-                                            className="bg-white rounded-3xl p-5 shadow-sm border border-slate-100 cursor-pointer group relative overflow-hidden"
-                                        >
-                                            <div className="absolute -right-6 -top-6 w-24 h-24 bg-yellow-400/10 rounded-full group-hover:bg-yellow-400/20 transition-colors" />
+                                <div className="space-y-6">
+                                    {/* Academic Certificates Section */}
+                                    {grades.filter((g: any) => g.isComplete).length > 0 && (
+                                        <div className="space-y-4">
+                                            <h4 className="text-sm font-bold text-slate-400 uppercase tracking-widest pl-2">เกียรติบัตรวิชาการ (Academic Certificates)</h4>
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                                                {grades.filter(g => g.isComplete).map((grade, idx) => (
+                                                    <motion.div
+                                                        key={`cert-${idx}`}
+                                                        whileHover={{ y: -4, boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1)' }}
+                                                        whileTap={{ scale: 0.98 }}
+                                                        onClick={() => {
+                                                            setSelectedGradeForCert(grade);
+                                                            setIsCertificateModalOpen(true);
+                                                        }}
+                                                        className="bg-gradient-to-br from-indigo-600 to-purple-700 rounded-3xl p-5 shadow-lg cursor-pointer group relative overflow-hidden"
+                                                    >
+                                                        <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-white/10 rounded-full group-hover:scale-125 transition-transform duration-500" />
+                                                        <div className="absolute top-4 right-4">
+                                                            <Sparkles className="w-5 h-5 text-indigo-200 animate-pulse" />
+                                                        </div>
 
-                                            <div className="flex items-center gap-4 relative z-10">
-                                                <div className="h-14 w-14 bg-gradient-to-br from-yellow-100 to-orange-100 text-yellow-600 rounded-2xl flex items-center justify-center shadow-inner">
-                                                    <Trophy className="w-7 h-7" />
-                                                </div>
-                                                <div className="flex-1 min-w-0">
-                                                    <h5 className="font-bold text-slate-800 text-sm truncate">{file.originalName}</h5>
-                                                    <div className="flex items-center gap-2 mt-1">
-                                                        <Badge variant="secondary" className="bg-yellow-50 text-yellow-700 text-[10px] px-2">Certificate</Badge>
-                                                        <span className="text-xs text-slate-400">{new Date(file.createdAt).toLocaleDateString()}</span>
-                                                    </div>
-                                                </div>
-                                                <div className="h-8 w-8 rounded-full bg-slate-50 flex items-center justify-center group-hover:bg-indigo-50 group-hover:text-indigo-600 transition-colors">
-                                                    <ChevronRight className="w-4 h-4" />
-                                                </div>
+                                                        <div className="flex items-center gap-4 relative z-10 text-white">
+                                                            <div className="h-14 w-14 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center shadow-inner">
+                                                                <Award className="w-8 h-8 text-white" />
+                                                            </div>
+                                                            <div className="flex-1 min-w-0">
+                                                                <h5 className="font-bold text-white text-sm truncate">{grade.subjectName}</h5>
+                                                                <div className="flex items-center gap-2 mt-1">
+                                                                    <Badge variant="secondary" className="bg-white/20 hover:bg-white/30 text-white border-transparent text-[10px] px-2">Grade: {grade.finalGrade}</Badge>
+                                                                    <span className="text-xs text-indigo-100">{grade.certificateIssuedAt ? new Date(grade.certificateIssuedAt).toLocaleDateString() : '-'}</span>
+                                                                </div>
+                                                            </div>
+                                                            <div className="h-8 w-8 rounded-full bg-white/10 flex items-center justify-center group-hover:bg-white/20 transition-colors">
+                                                                <Download className="w-4 h-4 text-white" />
+                                                            </div>
+                                                        </div>
+                                                    </motion.div>
+                                                ))}
                                             </div>
-                                        </motion.div>
-                                    ))}
+                                        </div>
+                                    )}
+
+                                    {/* Uploaded Files Section */}
+                                    <div className="space-y-4">
+                                        <h4 className="text-sm font-bold text-slate-400 uppercase tracking-widest pl-2">ไฟล์เอกสารอื่นๆ (Other Documents)</h4>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                                            {files.length === 0 && grades.filter(g => g.isComplete).length === 0 && (
+                                                <div className="col-span-full py-20 text-center opacity-30">
+                                                    <BookOpen className="w-16 h-16 mx-auto mb-3" />
+                                                    <p>ยังไม่มีเอกสาร</p>
+                                                </div>
+                                            )}
+                                            {files.map((file) => (
+                                                <motion.div
+                                                    key={file._id}
+                                                    whileHover={{ y: -4 }}
+                                                    whileTap={{ scale: 0.98 }}
+                                                    onClick={() => window.open(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}/api/files/download/${file.filename}`)}
+                                                    className="bg-white rounded-3xl p-5 shadow-sm border border-slate-100 cursor-pointer group relative overflow-hidden"
+                                                >
+                                                    <div className="absolute -right-6 -top-6 w-24 h-24 bg-yellow-400/10 rounded-full group-hover:bg-yellow-400/20 transition-colors" />
+
+                                                    <div className="flex items-center gap-4 relative z-10">
+                                                        <div className="h-14 w-14 bg-gradient-to-br from-yellow-100 to-orange-100 text-yellow-600 rounded-2xl flex items-center justify-center shadow-inner">
+                                                            <Trophy className="w-7 h-7" />
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <h5 className="font-bold text-slate-800 text-sm truncate">{file.originalName}</h5>
+                                                            <div className="flex items-center gap-2 mt-1">
+                                                                <Badge variant="secondary" className="bg-yellow-50 text-yellow-700 text-[10px] px-2">Document</Badge>
+                                                                <span className="text-xs text-slate-400">{new Date(file.createdAt).toLocaleDateString()}</span>
+                                                            </div>
+                                                        </div>
+                                                        <div className="h-8 w-8 rounded-full bg-slate-50 flex items-center justify-center group-hover:bg-indigo-50 group-hover:text-indigo-600 transition-colors">
+                                                            <ChevronRight className="w-4 h-4" />
+                                                        </div>
+                                                    </div>
+                                                </motion.div>
+                                            ))}
+                                        </div>
+                                    </div>
                                 </div>
                             </TabsContent>
 
@@ -426,6 +463,13 @@ export default function StudentDashboard() {
                         onClose={() => setIsOfficialReportOpen(false)}
                         grades={grades}
                         studentName={user?.displayName || 'Student'}
+                    />
+
+                    <CertificatePreviewModal
+                        isOpen={isCertificateModalOpen}
+                        onClose={() => setIsCertificateModalOpen(false)}
+                        grade={selectedGradeForCert}
+                        studentName={displayName}
                     />
 
                     {pdfData && (

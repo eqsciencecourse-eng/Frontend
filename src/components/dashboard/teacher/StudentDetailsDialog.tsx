@@ -288,11 +288,11 @@ export default function StudentDetailsDialog({ isOpen, onClose, student, subject
         if (!confirm('ยืนยันการลบข้อมูลการเข้าเรียนนี้?')) return;
         try {
             const token = await teacher.getIdToken();
+            const targetStudentId = student._id || student.id;
             let url = API_ENDPOINTS.ATTENDANCE.DELETE(id);
 
-            // If shared, only delete this student from the record
-            if (isShared && student && student._id) {
-                url += `?studentId=${student._id}`;
+            if (targetStudentId) {
+                url += `?studentId=${targetStudentId}`;
             }
 
             const res = await fetch(url, {
@@ -366,96 +366,156 @@ export default function StudentDetailsDialog({ isOpen, onClose, student, subject
                     <TabsContent value="attendance" className="flex-1 overflow-hidden p-6 mt-0 bg-slate-50">
                         <div className="bg-white rounded-xl shadow-sm border border-slate-200 h-full overflow-hidden flex flex-col">
                             {/* ... Attendance Input ... */}
-                            <div className="p-4 border-b bg-white flex items-center gap-4">
-                                <input
-                                    type="date"
-                                    value={newAttendance.date}
-                                    onChange={(e) => setNewAttendance({ ...newAttendance, date: e.target.value })}
-                                    className="border rounded px-2 py-1 text-sm h-9"
-                                />
-                                <select
-                                    value={newAttendance.status}
-                                    onChange={(e) => setNewAttendance({ ...newAttendance, status: e.target.value })}
-                                    className="border rounded px-2 py-1 text-sm h-9 bg-white"
-                                >
-                                    <option value="Present">มาเรียน</option>
-                                    <option value="Absent">ขาดเรียน</option>
-                                    <option value="Late">สาย</option>
-                                    <option value="Leave">ลา</option>
-                                </select>
-                                <input
-                                    type="text"
-                                    placeholder="หมายเหตุ..."
-                                    value={newAttendance.remark}
-                                    onChange={(e) => setNewAttendance({ ...newAttendance, remark: e.target.value })}
-                                    className="border rounded px-2 py-1 text-sm flex-1 h-9"
-                                />
-                                {editingAttendanceId ? (
-                                    <div className="flex gap-2">
-                                        <Button size="sm" onClick={handleSaveAttendance} disabled={savingAttendance} variant="default" className="h-9">
-                                            บันทึกแก้ไข
-                                        </Button>
-                                        <Button size="sm" onClick={handleCancelEdit} variant="outline" className="h-9">
-                                            ยกเลิก
-                                        </Button>
+                            <div className="p-4 mx-4 mt-4 bg-white rounded-xl border border-slate-200 flex flex-col md:flex-row items-end gap-3 shadow-sm shadow-slate-100">
+                                <div className="flex flex-col gap-1.5 w-full md:w-[150px] flex-shrink-0 relative group">
+                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider pl-1">วันที่เรียน</label>
+                                    <div className="relative">
+                                        <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                                            <CalendarCheck className="w-4 h-4 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
+                                        </div>
+                                        <input
+                                            type="date"
+                                            value={newAttendance.date}
+                                            onChange={(e) => setNewAttendance({ ...newAttendance, date: e.target.value })}
+                                            className="border border-slate-200 rounded-lg pl-[38px] pr-3 py-2 text-sm w-full outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all bg-slate-50 focus:bg-white text-slate-700 font-medium h-[42px]"
+                                        />
                                     </div>
-                                ) : (
-                                    <Button size="sm" onClick={handleSaveAttendance} disabled={savingAttendance} className="h-9 bg-green-600 hover:bg-green-700 text-white">
-                                        <Save className="w-4 h-4 mr-2" /> บันทึก
-                                    </Button>
-                                )}
+                                </div>
+                                
+                                <div className="flex flex-col gap-1.5 w-full md:w-[160px] flex-shrink-0">
+                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider pl-1">สถานะ</label>
+                                    <div className="relative">
+                                        <select
+                                            value={newAttendance.status}
+                                            onChange={(e) => setNewAttendance({ ...newAttendance, status: e.target.value })}
+                                            className={`border rounded-lg pl-3 pr-8 py-2 text-sm w-full outline-none focus:ring-2 transition-all font-bold appearance-none h-[42px] cursor-pointer
+                                                ${newAttendance.status === 'Present' || newAttendance.status === 'present' ? 'bg-green-50 text-green-700 border-green-200 focus:ring-green-500/20 focus:border-green-500' :
+                                                newAttendance.status === 'Online' || newAttendance.status === 'online' ? 'bg-teal-50 text-teal-700 border-teal-200 focus:ring-teal-500/20 focus:border-teal-500' :
+                                                newAttendance.status === 'Leave_Video' || newAttendance.status === 'leave_video' ? 'bg-purple-50 text-purple-700 border-purple-200 focus:ring-purple-500/20 focus:border-purple-500' :
+                                                newAttendance.status === 'Absent' || newAttendance.status === 'absent' ? 'bg-red-50 text-red-700 border-red-200 focus:ring-red-500/20 focus:border-red-500' :
+                                                newAttendance.status === 'Leave' || newAttendance.status === 'leave' ? 'bg-blue-50 text-blue-700 border-blue-200 focus:ring-blue-500/20 focus:border-blue-500' :
+                                                'bg-slate-50 text-slate-700 border-slate-200 focus:ring-slate-500/20 focus:border-slate-500'}`}
+                                        >
+                                            <option value="Present" className="text-slate-700 font-medium">✅ มาเรียน</option>
+                                            <option value="Online" className="text-slate-700 font-medium">💻 เรียนออนไลน์</option>
+                                            <option value="Leave_Video" className="text-slate-700 font-medium">📹 ลา/ส่งวิดีโอ</option>
+                                            <option value="Absent" className="text-slate-700 font-medium">❌ ขาดเรียน</option>
+                                            <option value="Leave" className="text-slate-700 font-medium">📝 ลา</option>
+                                            <option value="Late" className="text-slate-700 font-medium">⏰ สาย</option>
+                                        </select>
+                                        <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                                            <svg className={`w-4 h-4 
+                                                ${newAttendance.status === 'Present' || newAttendance.status === 'present' ? 'text-green-500' :
+                                                newAttendance.status === 'Online' || newAttendance.status === 'online' ? 'text-teal-500' :
+                                                newAttendance.status === 'Leave_Video' || newAttendance.status === 'leave_video' ? 'text-purple-500' :
+                                                newAttendance.status === 'Absent' || newAttendance.status === 'absent' ? 'text-red-500' :
+                                                newAttendance.status === 'Leave' || newAttendance.status === 'leave' ? 'text-blue-500' :
+                                                'text-slate-400'}`} 
+                                                fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="flex flex-col gap-1.5 w-full flex-1 relative group">
+                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider pl-1">หมายเหตุ</label>
+                                    <input
+                                        type="text"
+                                        placeholder="เพิ่มหมายเหตุ (ไม่บังคับ)..."
+                                        value={newAttendance.remark}
+                                        onChange={(e) => setNewAttendance({ ...newAttendance, remark: e.target.value })}
+                                        className="border border-slate-200 rounded-lg px-3 py-2 text-sm w-full outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all bg-slate-50 focus:bg-white text-slate-700 h-[42px]"
+                                    />
+                                </div>
+
+                                <div className="flex flex-col gap-1.5 w-full md:w-auto flex-shrink-0 mt-2 md:mt-0">
+                                    {editingAttendanceId ? (
+                                        <div className="flex gap-2 w-full">
+                                            <Button size="sm" onClick={handleSaveAttendance} disabled={savingAttendance} className="h-[42px] px-5 w-full md:w-auto flex-1 bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm font-bold text-sm rounded-lg">
+                                                <Save className="w-4 h-4 mr-2" /> บันทึกแก้ไข
+                                            </Button>
+                                            <Button size="sm" onClick={handleCancelEdit} variant="outline" className="h-[42px] px-4 w-full md:w-auto bg-white hover:bg-slate-50 text-slate-600 border-slate-200 font-bold border rounded-lg">
+                                                ยกเลิก
+                                            </Button>
+                                        </div>
+                                    ) : (
+                                        <Button size="sm" onClick={handleSaveAttendance} disabled={savingAttendance} className="h-[42px] px-6 w-full md:w-auto bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-600/20 font-bold text-sm transition-all active:scale-[0.98] rounded-lg">
+                                            <Save className="w-4 h-4 mr-2" /> บันทึกเวลาเรียน
+                                        </Button>
+                                    )}
+                                </div>
                             </div>
 
-                            <div className="flex-1 overflow-y-auto">
-                                <table className="w-full text-sm text-left">
-                                    <thead className="text-xs text-slate-500 uppercase bg-slate-50 sticky top-0">
-                                        <tr>
-                                            <th className="px-6 py-3">วันที่</th>
-                                            <th className="px-6 py-3">สถานะ</th>
-                                            <th className="px-6 py-3">หมายเหตุ</th>
-                                            <th className="px-6 py-3 text-right">จัดการ</th>
-                                        </tr>
-                                    </thead>
+                            <div className="flex-1 overflow-y-auto p-4">
+                                <div className="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-sm">
+                                    <table className="w-full text-sm text-left">
+                                        <thead className="text-xs text-slate-500 uppercase bg-slate-50/80 sticky top-0 backdrop-blur-sm z-10">
+                                            <tr>
+                                                <th className="px-6 py-4 font-bold border-b border-slate-200 tracking-wider">วันที่เรียน</th>
+                                                <th className="px-6 py-4 font-bold border-b border-slate-200 tracking-wider">สถานะ</th>
+                                                <th className="px-6 py-4 font-bold border-b border-slate-200 tracking-wider">หมายเหตุ</th>
+                                                <th className="px-6 py-4 font-bold border-b border-slate-200 text-right tracking-wider w-[100px]">จัดการ</th>
+                                            </tr>
+                                        </thead>
                                     <tbody>
                                         {attendanceHistory.length > 0 ? (
                                             attendanceHistory.map((record: any) => (
-                                                <tr key={record.id} className="bg-white border-b hover:bg-slate-50">
+                                                <tr key={record.id} className="bg-white border-b hover:bg-slate-50 group transition-colors">
                                                     <td className="px-6 py-4 font-medium text-slate-900">
                                                         {new Date(record.date).toLocaleDateString('th-TH')}
                                                     </td>
                                                     <td className="px-6 py-4">
                                                         <span className={`px-2 py-1 rounded-full text-xs font-bold
-                                                            ${record.status === 'Present' || record.status === 'present' ? 'bg-green-100 text-green-800' :
-                                                                record.status === 'Absent' || record.status === 'absent' ? 'bg-red-100 text-red-800' :
-                                                                    record.status === 'Leave' || record.status === 'leave' ? 'bg-blue-100 text-blue-800' :
+                                                            ${(record.status || '').toLowerCase() === 'present' ? 'bg-green-100 text-green-800' :
+                                                                (record.status || '').toLowerCase() === 'online' ? 'bg-teal-100 text-teal-800' :
+                                                                (record.status || '').toLowerCase() === 'leave_video' || record.status === 'Leave/Video' ? 'bg-purple-100 text-purple-800' :
+                                                                (record.status || '').toLowerCase() === 'absent' ? 'bg-red-100 text-red-800' :
+                                                                    (record.status || '').toLowerCase() === 'leave' ? 'bg-blue-100 text-blue-800' :
                                                                         'bg-orange-100 text-orange-800'}`}>
-                                                            {record.status === 'Present' || record.status === 'present' ? 'มาเรียน' :
-                                                                record.status === 'Absent' || record.status === 'absent' ? 'ขาด' :
-                                                                    record.status === 'Leave' || record.status === 'leave' ? 'ลา' : 'สาย'}
+                                                            {(record.status || '').toLowerCase() === 'present' ? 'มาเรียน' :
+                                                                (record.status || '').toLowerCase() === 'online' ? 'เรียนออนไลน์' :
+                                                                (record.status || '').toLowerCase() === 'leave_video' || record.status === 'Leave/Video' ? 'ลา/ส่งวิดีโอ' :
+                                                                (record.status || '').toLowerCase() === 'absent' ? 'ขาด' :
+                                                                    (record.status || '').toLowerCase() === 'leave' ? 'ลา' : 'สาย'}
                                                         </span>
                                                     </td>
                                                     <td className="px-6 py-4 text-slate-500">
                                                         {record.remark || '-'}
                                                     </td>
-                                                    <td className="px-6 py-4 text-right flex justify-end gap-2">
-                                                        <button onClick={() => handleEditAttendance(record)} className="text-blue-600 hover:text-blue-800">
-                                                            <Edit2 className="w-4 h-4" />
-                                                        </button>
-                                                        <button onClick={() => handleDeleteAttendance(record.id, record.isShared)} className="text-red-600 hover:text-red-800">
-                                                            <Trash2 className="w-4 h-4" />
-                                                        </button>
+                                                    <td className="px-6 py-4 text-right">
+                                                        <div className="flex justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                            <button 
+                                                                onClick={() => handleEditAttendance(record)} 
+                                                                className="flex items-center justify-center w-8 h-8 rounded-lg text-blue-600 hover:bg-blue-50 hover:text-blue-700 transition-all focus:opacity-100"
+                                                                title="แก้ไข"
+                                                            >
+                                                                <Edit2 className="w-4 h-4" />
+                                                            </button>
+                                                            <button 
+                                                                onClick={() => handleDeleteAttendance(record.id, record.isShared)} 
+                                                                className="flex items-center justify-center w-8 h-8 rounded-lg text-rose-500 hover:bg-rose-50 hover:text-rose-600 transition-all focus:opacity-100"
+                                                                title="ลบ"
+                                                            >
+                                                                <Trash2 className="w-4 h-4" />
+                                                            </button>
+                                                        </div>
                                                     </td>
                                                 </tr>
                                             ))
                                         ) : (
                                             <tr>
-                                                <td colSpan={4} className="px-6 py-10 text-center text-slate-500">
-                                                    ไม่มีประวัติการเข้าเรียน
+                                                <td colSpan={4} className="px-6 py-12">
+                                                    <div className="flex flex-col items-center justify-center text-slate-400 gap-3">
+                                                        <div className="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center border border-slate-100">
+                                                            <CalendarCheck className="w-6 h-6 text-slate-300" />
+                                                        </div>
+                                                        <p className="text-sm font-medium">ยังไม่มีประวัติการเข้าเรียนในวิชานี้</p>
+                                                    </div>
                                                 </td>
                                             </tr>
                                         )}
                                     </tbody>
                                 </table>
+                            </div>
                             </div>
                         </div>
                     </TabsContent>
@@ -532,37 +592,36 @@ export default function StudentDetailsDialog({ isOpen, onClose, student, subject
                                             const score = evalScores[skill.key as keyof typeof evalScores] || 0;
                                             // Ensure classes exist fully written for tailwind PurgeCSS
                                             const getStyles = (s: number) => {
-                                                if (s <= 3) return { textClass: 'text-rose-500', barBg: 'bg-rose-500', thumbAccent: 'accent-rose-500' };
-                                                if (s <= 6) return { textClass: 'text-amber-500', barBg: 'bg-amber-500', thumbAccent: 'accent-amber-500' };
-                                                if (s >= 9) return { textClass: 'text-emerald-500', barBg: 'bg-emerald-500', thumbAccent: 'accent-emerald-500' };
-                                                return { textClass: 'text-indigo-600', barBg: 'bg-indigo-600', thumbAccent: 'accent-indigo-600' };
+                                                if (s <= 2) return { textClass: 'text-rose-500', barBg: 'bg-rose-500', thumbAccent: 'accent-rose-500' };
+                                                if (s <= 4) return { textClass: 'text-amber-500', barBg: 'bg-amber-500', thumbAccent: 'accent-amber-500' };
+                                                return { textClass: 'text-emerald-500', barBg: 'bg-emerald-500', thumbAccent: 'accent-emerald-500' };
                                             };
                                             const styles = getStyles(score);
 
                                             return (
                                                 <div key={skill.key} className="p-4 rounded-xl border border-slate-100 bg-white shadow-sm hover:shadow-md transition-shadow">
-                                                    <div className="flex justify-between items-center mb-3">
+                                                    <div className="flex justify-between items-center mb-2">
                                                         <label className="text-sm font-bold text-slate-700">{skill.label}</label>
-                                                        <div className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold text-white shadow-sm ${styles.barBg}`}>
-                                                            {score}
-                                                        </div>
                                                     </div>
                                                     
-                                                    <div className="w-full">
-                                                        <input
-                                                            type="range"
-                                                            min="0"
-                                                            max="10"
-                                                            step="1"
-                                                            className={`w-full h-2 rounded-lg cursor-pointer bg-slate-200 outline-none ${styles.thumbAccent}`}
-                                                            value={score}
-                                                            onChange={(e) => setEvalScores({ ...evalScores, [skill.key]: parseInt(e.target.value) })}
-                                                        />
-                                                        <div className="flex justify-between text-[10px] text-slate-400 font-bold mt-2.5 uppercase tracking-wide">
-                                                            <span className={score <= 3 ? styles.textClass : ''}>ปรับปรุง (0-3)</span>
-                                                            <span className={score >= 4 && score <= 6 ? styles.textClass : ''}>พอใช้ (4-6)</span>
-                                                            <span className={score >= 7 ? styles.textClass : ''}>ดีมาก (7-10)</span>
-                                                        </div>
+                                                    <div className="flex items-center gap-1.5 justify-between w-full">
+                                                        {[0, 1, 2, 3, 4, 5].map((val) => (
+                                                            <button
+                                                                key={val}
+                                                                onClick={() => setEvalScores({ ...evalScores, [skill.key]: val })}
+                                                                className={`flex-1 h-10 rounded-lg text-sm font-bold transition-all shadow-sm
+                                                                ${score === val 
+                                                                    ? `${styles.barBg} text-white shadow-md scale-105 z-10` 
+                                                                    : 'bg-white border border-slate-200 text-slate-500 hover:bg-slate-50'}`}
+                                                            >
+                                                                {val}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                    <div className="flex justify-between text-[10px] text-slate-400 font-bold mt-2.5 uppercase tracking-wide">
+                                                        <span className={score <= 2 ? styles.textClass : ''}>ปรับปรุง (0-2)</span>
+                                                        <span className={score >= 3 && score <= 4 ? styles.textClass : ''}>พอใช้ (3-4)</span>
+                                                        <span className={score === 5 ? styles.textClass : ''}>ดีมาก (5)</span>
                                                     </div>
                                                 </div>
                                             );
@@ -632,7 +691,7 @@ export default function StudentDetailsDialog({ isOpen, onClose, student, subject
                                                                         </button>
                                                                     </div>
                                                                     <div className="text-right mt-1 flex flex-col items-end">
-                                                                        <span className={`text-xl font-black leading-none ${Number(avg) >= 8 ? 'text-emerald-500' : Number(avg) >= 5 ? 'text-indigo-500' : 'text-orange-500'}`}>
+                                                                        <span className={`text-xl font-black leading-none ${Number(avg) >= 4 ? 'text-emerald-500' : Number(avg) >= 3 ? 'text-indigo-500' : 'text-orange-500'}`}>
                                                                             {avg}
                                                                         </span>
                                                                         <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-1">เฉลี่ย</span>
@@ -650,8 +709,8 @@ export default function StudentDetailsDialog({ isOpen, onClose, student, subject
                                                                         </div>
                                                                         <div className="h-1 w-full bg-slate-100 rounded-full overflow-hidden">
                                                                             <div
-                                                                                className={`h-full ${val >= 8 ? 'bg-green-400' : 'bg-indigo-400'}`}
-                                                                                style={{ width: `${(val / 10) * 100}%` }}
+                                                                                className={`h-full ${val >= 4 ? 'bg-green-400' : 'bg-indigo-400'}`}
+                                                                                style={{ width: `${(val / 5) * 100}%` }}
                                                                             />
                                                                         </div>
                                                                     </div>

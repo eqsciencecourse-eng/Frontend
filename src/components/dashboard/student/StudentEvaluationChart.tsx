@@ -133,10 +133,10 @@ export default function StudentEvaluationChart({ studentId }: { studentId?: stri
                     color: '#64748b' // Slate 500
                 },
                 suggestedMin: 0,
-                suggestedMax: 10,
+                suggestedMax: 5,
                 ticks: {
                     display: false, // Hide numeric ticks on axis
-                    stepSize: 2
+                    stepSize: 1
                 }
             }
         },
@@ -162,7 +162,7 @@ export default function StudentEvaluationChart({ studentId }: { studentId?: stri
                         if (context.parsed.r !== null) {
                             // Custom tooltip text instead of raw number
                             const val = context.parsed.r;
-                            const rating = val >= 8 ? 'ยอดเยี่ยม' : val >= 5 ? 'ดี' : 'กำลังพัฒนา';
+                            const rating = val === 5 ? 'ดีมาก (5/5)' : val >= 3 ? 'พอใช้' : 'จุดที่พัฒนาได้';
                             label += rating;
                         }
                         return label;
@@ -183,50 +183,52 @@ export default function StudentEvaluationChart({ studentId }: { studentId?: stri
         <div className="space-y-6">
             {/* 1. Level & Stats Header */}
             <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                <Card className="relative overflow-hidden border-orange-100 bg-gradient-to-br from-orange-50 to-white shadow-sm transition-all hover:shadow-md md:col-span-2">
-                    <div className="absolute right-[-20px] top-[-20px] h-32 w-32 rounded-full bg-orange-100/50 blur-3xl text-orange-200" />
+                <Card className="relative overflow-hidden border-indigo-100 bg-gradient-to-br from-indigo-50 to-white shadow-sm transition-all hover:shadow-md md:col-span-2">
+                    <div className="absolute right-[-20px] top-[-20px] h-32 w-32 rounded-full bg-indigo-100/50 blur-3xl text-indigo-200" />
                     <CardHeader className="flex flex-row items-center justify-between pb-2 z-10 relative">
-                        <CardTitle className="text-sm font-medium text-slate-500 uppercase tracking-wider">
-                            ระดับความสามารถ (Class Rank)
+                        <CardTitle className="text-sm font-bold text-slate-600 flex items-center gap-2">
+                            <Star className="h-4 w-4 text-indigo-500" />
+                            สรุปภาพรวมพัฒนาการของน้อง
                         </CardTitle>
-                        <Crown className="h-5 w-5 text-orange-500" />
                     </CardHeader>
                     <CardContent className="z-10 relative">
                         <div className="flex items-center gap-6">
-                            <div className={`flex h-20 w-20 items-center justify-center rounded-2xl bg-white shadow-md ring-4 ${levelInfo.color.replace('text', 'ring').replace('500', '100')}`}>
-                                <span className={`text-4xl font-black ${levelInfo.color}`}>{currentLevel}</span>
+                            <div className={`flex shrink-0 h-20 w-20 items-center justify-center rounded-2xl bg-white shadow-md ring-4 ${levelInfo.color.replace('text', 'ring').replace('500', '100')}`}>
+                                <Icon className={`h-10 w-10 ${levelInfo.color}`} />
                             </div>
                             <div>
                                 <h3 className={`text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-slate-800 to-slate-600`}>
-                                    {levelInfo.title}
+                                    ระดับ: {levelInfo.title}
                                 </h3>
-                                <div className="mt-2 flex items-center gap-2">
-                                    <Badge variant="secondary" className="bg-white/80 font-normal text-slate-600 border shadow-sm">
-                                        <HistoryIcon className="w-3 h-3 mr-1" />
-                                        {data.totalEvaluations} คาบเรียน
-                                    </Badge>
-                                    <Badge variant="secondary" className="bg-white/80 font-normal text-slate-600 border shadow-sm">
-                                        <Zap className="w-3 h-3 mr-1 text-yellow-500" />
-                                        EXP: {data.totalXP}
-                                    </Badge>
+                                <div className="mt-3 flex items-center gap-4">
+                                    <div className="flex flex-col">
+                                        <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-0.5">ถูกประเมินแล้ว</span>
+                                        <div className="flex items-center gap-1.5 text-slate-700 bg-white px-2.5 py-1 rounded-md border border-slate-100 shadow-sm">
+                                            <HistoryIcon className="w-3.5 h-3.5 text-indigo-400" />
+                                            <span className="text-sm font-bold">{data.totalEvaluations} คาบเรียน</span>
+                                        </div>
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-0.5">คะแนนสะสม (XP)</span>
+                                        <div className="flex items-center gap-1.5 text-slate-700 bg-white px-2.5 py-1 rounded-md border border-slate-100 shadow-sm">
+                                            <Zap className="w-3.5 h-3.5 text-yellow-500" />
+                                            <span className="text-sm font-bold">{data.totalXP} แต้ม</span>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </CardContent>
                 </Card>
 
-                <Card className="border-indigo-100 bg-gradient-to-br from-indigo-50 to-white shadow-sm transition-all hover:shadow-md">
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-slate-500 uppercase tracking-wider">
-                            สถานะ (Status)
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="flex flex-col items-center justify-center py-4">
-                            <Icon className={`h-12 w-12 ${levelInfo.color} mb-2`} />
-                            <span className={`text-lg font-bold ${levelInfo.color}`}>นักเรียน (Active)</span>
-                        </div>
-                    </CardContent>
+                <Card className="border-emerald-100 bg-gradient-to-br from-emerald-50 to-white shadow-sm transition-all hover:shadow-md flex flex-col justify-center items-center text-center p-6">
+                    <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-sm mb-4 border border-emerald-100">
+                        <Target className="h-8 w-8 text-emerald-500" />
+                    </div>
+                    <div className="space-y-1">
+                        <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">สถานะการเรียน</h4>
+                        <p className="text-xl font-bold text-emerald-600">กำลังศึกษา</p>
+                    </div>
                 </Card>
             </div>
 
@@ -264,16 +266,16 @@ export default function StudentEvaluationChart({ studentId }: { studentId?: stri
                                     <div className="mb-2 flex items-center justify-between">
                                         <span className="text-sm font-medium text-slate-600">{label}</span>
                                         <span className="text-xs font-bold text-slate-400">
-                                            {val >= 8 ? 'ยอดเยี่ยม' : val >= 5 ? 'ดี' : 'กำลังพัฒนา'}
+                                            {val === 5 ? 'ยอดเยี่ยม (5/5)' : val >= 3 ? `ดี (${val.toFixed(1)}/5)` : `ควรพัฒนา (${val.toFixed(1)}/5)`}
                                         </span>
                                     </div>
                                     <div className="h-2.5 w-full overflow-hidden rounded-full bg-slate-100">
                                         <div
-                                            className={`h-full rounded-full transition-all duration-1000 ease-out ${val >= 8 ? 'bg-gradient-to-r from-emerald-400 to-emerald-500' :
-                                                val >= 5 ? 'bg-gradient-to-r from-blue-400 to-indigo-500' :
+                                            className={`h-full rounded-full transition-all duration-1000 ease-out ${val === 5 ? 'bg-gradient-to-r from-emerald-400 to-emerald-500' :
+                                                val >= 3 ? 'bg-gradient-to-r from-blue-400 to-indigo-500' :
                                                     'bg-gradient-to-r from-orange-400 to-orange-500'
                                                 }`}
-                                            style={{ width: `${(val / 10) * 100}%` }}
+                                            style={{ width: `${(val / 5) * 100}%` }}
                                         />
                                     </div>
                                 </div>

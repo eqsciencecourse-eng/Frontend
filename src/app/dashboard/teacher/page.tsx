@@ -14,6 +14,7 @@ import StudentDetailsDialog from '@/components/dashboard/teacher/StudentDetailsD
 import ManageClassDialog from '@/components/dashboard/teacher/ManageClassDialog';
 import TeacherScheduleView from '@/components/dashboard/teacher/TeacherScheduleView';
 import BatchAttendanceDialog from '@/components/dashboard/teacher/BatchAttendanceDialog';
+import StudentEvaluationWizardDialog from '@/components/dashboard/teacher/StudentEvaluationWizardDialog';
 import { API_ENDPOINTS } from '@/lib/api-config';
 
 const ADMIN_EMAIL = 'eq.science.online1@gmail.com';
@@ -61,6 +62,7 @@ function TeacherDashboardContent() {
     const [selectedStudent, setSelectedStudent] = useState<any>(null);
     const [selectedSubjectForGrading, setSelectedSubjectForGrading] = useState<any>(null);
     const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+    const [isWizardOpen, setIsWizardOpen] = useState(false);
     const [isClassManagerOpen, setIsClassManagerOpen] = useState(false);
 
     // [Phase 2] Batch Attendance State
@@ -552,19 +554,36 @@ function TeacherDashboardContent() {
                                                                                 })()}
                                                                             </td>
                                                                             <td className="p-4 text-center">
-                                                                                <Button
-                                                                                    size="sm"
-                                                                                    variant="ghost"
-                                                                                    className="h-8 w-8 p-0 rounded-none text-slate-400 hover:text-indigo-600 hover:bg-white border border-transparent hover:border-indigo-100"
-                                                                                    onClick={() => {
-                                                                                        setSelectedStudent(student);
-                                                                                        setSelectedSubjectForGrading(subject);
-                                                                                        setIsDetailsOpen(true);
-                                                                                    }}
-                                                                                    title="ประวัติการเข้าเรียน"
-                                                                                >
-                                                                                    <FileText className="h-5 w-5" />
-                                                                                </Button>
+                                                                                <div className="flex items-center justify-center gap-1">
+                                                                                    <Button
+                                                                                        size="sm"
+                                                                                        variant="ghost"
+                                                                                        className="h-8 w-8 p-0 rounded-none text-slate-400 hover:text-indigo-600 hover:bg-white border border-transparent hover:border-indigo-100"
+                                                                                        onClick={() => {
+                                                                                            setSelectedStudent(student);
+                                                                                            setSelectedSubjectForGrading(subject);
+                                                                                            setIsDetailsOpen(true);
+                                                                                        }}
+                                                                                        title="ประวัติการเข้าเรียน (รายคาบ)"
+                                                                                    >
+                                                                                        <FileText className="h-5 w-5" />
+                                                                                    </Button>
+                                                                                    {/* New Assessment Wizard Button */}
+                                                                                    <Button
+                                                                                        size="sm"
+                                                                                        variant="ghost"
+                                                                                        className="h-8 p-0 px-2 rounded-none text-emerald-500 hover:text-white hover:bg-emerald-600 border border-emerald-100 shadow-sm flex items-center gap-1 font-semibold"
+                                                                                        onClick={() => {
+                                                                                            setSelectedStudent(student);
+                                                                                            setSelectedSubjectForGrading(subject);
+                                                                                            setIsWizardOpen(true);
+                                                                                        }}
+                                                                                        title="ออกเกียรติบัตร / สรุปเกรด"
+                                                                                    >
+                                                                                        <BarChart3 className="h-4 w-4" />
+                                                                                        ออกเกรด
+                                                                                    </Button>
+                                                                                </div>
                                                                             </td>
                                                                         </tr>
                                                                     ))}
@@ -612,6 +631,14 @@ function TeacherDashboardContent() {
                 <StudentDetailsDialog
                     isOpen={isDetailsOpen}
                     onClose={() => setIsDetailsOpen(false)}
+                    student={selectedStudent}
+                    subject={selectedSubjectForGrading}
+                    teacher={user}
+                    onUpdate={fetchData}
+                />
+                <StudentEvaluationWizardDialog
+                    isOpen={isWizardOpen}
+                    onClose={() => setIsWizardOpen(false)}
                     student={selectedStudent}
                     subject={selectedSubjectForGrading}
                     teacher={user}

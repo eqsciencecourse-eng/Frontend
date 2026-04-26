@@ -21,7 +21,7 @@ interface BatchAttendanceDialogProps {
     onUpdate: () => void;
 }
 
-type AttendanceStatus = 'present' | 'absent' | 'sick' | 'leave';
+type AttendanceStatus = 'present' | 'absent' | 'sick' | 'leave' | 'leave_video' | 'online';
 
 interface AttendanceState {
     [studentId: string]: {
@@ -32,6 +32,8 @@ interface AttendanceState {
 
 const STATUS_OPTIONS: { value: AttendanceStatus; label: string; color: string }[] = [
     { value: 'present', label: 'มาเรียน', color: 'text-green-600' },
+    { value: 'online', label: 'เรียนออนไลน์', color: 'text-teal-600' },
+    { value: 'leave_video', label: 'ลา/ส่งวิดีโอ', color: 'text-purple-600' },
     { value: 'absent', label: 'ขาด', color: 'text-red-600' },
     { value: 'sick', label: 'ลาป่วย', color: 'text-orange-600' },
     { value: 'leave', label: 'ลากิจ', color: 'text-blue-600' },
@@ -138,9 +140,11 @@ export default function BatchAttendanceDialog({
     };
 
     const getStats = () => {
-        const stats = { present: 0, absent: 0, sick: 0, leave: 0 };
+        const stats: Record<AttendanceStatus, number> = { present: 0, absent: 0, sick: 0, leave: 0, leave_video: 0, online: 0 };
         Object.values(attendance).forEach(v => {
-            stats[v.status]++;
+            if (stats[v.status] !== undefined) {
+                stats[v.status]++;
+            }
         });
         return stats;
     };
@@ -180,8 +184,10 @@ export default function BatchAttendanceDialog({
 
                     {/* Quick Stats / Actions */}
                     <div className="flex items-center justify-between mt-4 bg-slate-50 p-3 rounded-none border border-slate-100">
-                        <div className="flex gap-4 text-sm">
+                        <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm">
                             <span className="text-green-600 font-bold">มา: {stats.present}</span>
+                            <span className="text-teal-600 font-bold">ออนไลน์: {stats.online}</span>
+                            <span className="text-purple-600 font-bold">ส่งวิดีโอ: {stats.leave_video}</span>
                             <span className="text-red-600 font-bold">ขาด: {stats.absent}</span>
                             <span className="text-orange-600 font-bold">ลาป่วย: {stats.sick}</span>
                             <span className="text-blue-600 font-bold">ลากิจ: {stats.leave}</span>
@@ -210,7 +216,10 @@ export default function BatchAttendanceDialog({
                                         <td className="p-4 pl-6 text-slate-400 text-sm">{index + 1}</td>
                                         <td className="p-4">
                                             <div className="font-bold text-slate-700">{student.studentName || student.displayName}</div>
-                                            <div className="text-xs text-slate-400 font-mono">{student.firstName}</div>
+                                            <div className="text-xs text-slate-500 font-medium mt-0.5">
+                                                {student.nickname ? `(น้อง${student.nickname}) ` : ''} 
+                                                <span className="font-mono text-slate-400 font-normal">{student.studentId || student.firstName}</span>
+                                            </div>
                                         </td>
                                         <td className="p-4 flex justify-center">
                                             <div className="flex items-center gap-1 bg-white border border-slate-200 p-1 rounded-full shadow-sm">
