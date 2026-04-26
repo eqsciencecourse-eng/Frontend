@@ -128,8 +128,8 @@ export default function StudentEvaluationWizardDialog({ isOpen, onClose, student
             const scores = log.scores as any;
             if (scores) {
                 const values = Object.values(scores);
-                const sessionSum = values.reduce((a: any, b: any) => a + Number(b || 0), 0);
-                const sessionAvg = sessionSum / Math.max(1, values.length);
+                const sessionSum: any = values.reduce((a: any, b: any) => a + Number(b || 0), 0);
+                const sessionAvg = (sessionSum as number) / Math.max(1, values.length);
                 totalSum += sessionAvg;
                 count++;
             }
