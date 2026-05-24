@@ -14,7 +14,7 @@ export default function AccountingPage() {
     const { logout } = useAuth();
 
     // Target URL provided by user
-    const PHP_APP_URL = 'https://eq-9497u5pxo-eqsciencecourse-engs-projects.vercel.app/';
+    const PHP_APP_URL = 'https://eq-ac.vercel.app/';
 
     return (
         <div className="flex h-screen bg-slate-50 overflow-hidden">
