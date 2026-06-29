@@ -1,11 +1,8 @@
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Award, Download, Loader2, X } from 'lucide-react';
-import { useRef, useState } from 'react';
-import { toJpeg } from 'html-to-image';
-import jsPDF from 'jspdf';
-import { format } from 'date-fns';
-import { th } from 'date-fns/locale';
+import { Award, Download, Loader2, X, AlertCircle } from 'lucide-react';
+import { useState } from 'react';
+import { API_ENDPOINTS } from '@/lib/api-config';
 
 interface CertificatePreviewModalProps {
     isOpen: boolean;
@@ -16,56 +13,27 @@ interface CertificatePreviewModalProps {
 
 export default function CertificatePreviewModal({ isOpen, onClose, grade, studentName }: CertificatePreviewModalProps) {
     const [generating, setGenerating] = useState(false);
-    const certificateRef = useRef<HTMLDivElement>(null);
+
+    const certificateImageUrl = grade?.certificateURL
+        ? `${API_ENDPOINTS.GRADES.BASE}/certificate-image/${grade.certificateURL}`
+        : null;
 
     const handleDownload = async () => {
-        if (!certificateRef.current) return;
+        if (!certificateImageUrl) return;
         setGenerating(true);
         try {
-            const targetEl = certificateRef.current;
-            const parentEl = targetEl.parentElement;
-            let originalStyles = '';
-
-            if (parentEl) {
-                originalStyles = parentEl.style.cssText;
-                parentEl.style.position = 'fixed';
-                parentEl.style.top = '0';
-                parentEl.style.left = '0';
-                parentEl.style.opacity = '0';
-                parentEl.style.zIndex = '-9999';
-                parentEl.style.pointerEvents = 'none';
-                parentEl.style.display = 'block';
-            }
-
-            targetEl.style.display = 'block';
-            targetEl.style.width = '297mm';
-            targetEl.style.height = '210mm';
-
-            await new Promise(resolve => setTimeout(resolve, 1500));
-
-            if (targetEl.offsetWidth === 0 || targetEl.offsetHeight === 0) {
-                if (parentEl) parentEl.style.cssText = originalStyles;
-                throw new Error(`ขนาดของ Canvas ผิดปกติ (Width: ${targetEl.offsetWidth}, Height: ${targetEl.offsetHeight})`);
-            }
-
-            const imgData = await toJpeg(targetEl, {
-                quality: 1.0,
-                pixelRatio: 3,
-                backgroundColor: '#ffffff',
-                cacheBust: true,
-            });
-
-            if (parentEl) {
-                parentEl.style.cssText = originalStyles;
-            }
-            
-            const pdf = new jsPDF('l', 'mm', 'a4');
-            const pdfWidth = pdf.internal.pageSize.getWidth();
-            const pdfHeight = pdf.internal.pageSize.getHeight();
-            pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
-            pdf.save(`Certificate_${studentName}_${grade?.subjectName}.pdf`);
+            const resp = await fetch(certificateImageUrl);
+            const blob = await resp.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Certificate_${studentName}_${grade?.subjectName}.jpg`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
         } catch (error) {
-            console.error("PDF Error:", error);
+            console.error("Download Error:", error);
         } finally {
             setGenerating(false);
         }
@@ -86,143 +54,61 @@ export default function CertificatePreviewModal({ isOpen, onClose, grade, studen
 
                     <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
                         <Award className="w-6 h-6 text-yellow-400" />
-                        Certificate Preview
+                        ใบประกาศ - {grade.subjectName}
                     </h2>
 
-                    {/* Preview Scrollable Area */}
-                    <div className="w-full overflow-auto flex justify-center p-4 bg-slate-800 rounded-2xl shadow-inner mb-6">
-                        <div
-                            ref={certificateRef}
-                            style={{
-                                width: '297mm',
-                                height: '210mm',
-                                backgroundColor: '#ffffff',
-                                position: 'relative',
-                                padding: '20mm',
-                                boxSizing: 'border-box',
-                                fontFamily: '"Kanit", "Inter", sans-serif',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                justifyContent: 'center',
-                                alignItems: 'center',
-                                color: '#1e293b',
-                                transform: 'scale(0.6)',
-                                transformOrigin: 'top center'
-                            }}
-                            className="certificate-render-target"
-                        >
-                            {/* Inner Border Layer 1 */}
-                            <div style={{
-                                position: 'absolute', top: '10mm', bottom: '10mm', left: '10mm', right: '10mm',
-                                border: '3px solid #1e1b4b',
-                                borderRadius: '16px'
-                            }} />
-
-                            {/* Inner Border Layer 2 */}
-                            <div style={{
-                                position: 'absolute', top: '12mm', bottom: '12mm', left: '12mm', right: '12mm',
-                                border: '1px solid #4338ca',
-                                borderRadius: '12px',
-                                backgroundColor: 'rgba(248, 250, 252, 0.4)'
-                            }} />
-
-                            {/* Top Watermark/Logo styling */}
-                            <div style={{ zIndex: 10, textAlign: 'center', marginBottom: '20px' }}>
-                                <img
-                                    src="/logo.png"
-                                    alt="School Logo"
-                                    style={{ width: '100px', height: '100px', margin: '0 auto', display: 'block' }}
-                                    onError={(e) => {
-                                        (e.target as HTMLImageElement).onerror = null;
-                                        (e.target as HTMLImageElement).src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
-                                    }}
-                                />
-                            </div>
-
-                            {/* Title */}
-                            <h1 style={{ zIndex: 10, fontSize: '48px', color: '#1e1b4b', fontWeight: 800, letterSpacing: '2px', margin: '0 0 10px 0' }}> CERTIFICATE OF EXCELLENCE </h1>
-                            <p style={{ zIndex: 10, fontSize: '18px', color: '#64748b', fontWeight: 'bold', letterSpacing: '1px', textTransform: 'uppercase' }}> EQ Science Learning Center </p>
-
-                            {/* Awarded to */}
-                            <div style={{ zIndex: 10, marginTop: '40px', marginBottom: '20px', textAlign: 'center' }}>
-                                <p style={{ fontSize: '16px', color: '#64748b', marginBottom: '10px' }}>This certificate is proudly awarded to:</p>
-                                <h2 style={{ fontSize: '36px', color: '#0f172a', fontWeight: 'bold', margin: '0', borderBottom: '2px solid #cbd5e1', display: 'inline-block', padding: '0 40px 10px 40px' }}>
-                                    {studentName}
-                                </h2>
-                            </div>
-
-                            {/* Description */}
-                            <div style={{ zIndex: 10, width: '70%', textAlign: 'center', marginBottom: '30px' }}>
-                                <p style={{ fontSize: '18px', lineHeight: '1.6', color: '#475569' }}>
-                                    for successfully completing and demonstrating exceptional skills in the course of
-                                    <strong style={{ color: '#4338ca', fontWeight: 'bold', marginLeft: '6px' }}>{grade?.subjectName}</strong>.
-                                    We commend your dedication, creativity, and commitment to learning.
-                                </p>
-                            </div>
-
-                            {/* Grade Ribbon */}
-                            <div style={{ zIndex: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '40px' }}>
-                                <span style={{ fontSize: '14px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '6px' }}>Performance Grade</span>
-                                <div style={{ backgroundColor: '#4f46e5', color: '#ffffff', padding: '10px 30px', borderRadius: '50px', fontSize: '24px', fontWeight: 'bold', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}>
-                                    {grade?.finalGrade || '-'}
-                                </div>
-                            </div>
-
-                            {/* Signatures */}
-                            <div style={{ zIndex: 10, display: 'flex', justifyContent: 'space-between', width: '80%', marginTop: 'auto', marginBottom: '20px' }}>
-                                {/* Date */}
-                                <div style={{ textAlign: 'center' }}>
-                                    <div style={{ borderBottom: '1px solid #1e293b', width: '200px', paddingBottom: '5px', marginBottom: '5px', fontSize: '16px', color: '#0f172a', fontWeight: 'bold' }}>
-                                        {grade?.certificateIssuedAt ? format(new Date(grade.certificateIssuedAt), 'd MMMM yyyy', { locale: th }) : format(new Date(), 'd MMMM yyyy', { locale: th })}
-                                    </div>
-                                    <span style={{ fontSize: '14px', color: '#64748b' }}>Date of Issue</span>
-                                </div>
-
-                                {/* Director Signature */}
-                                <div style={{ textAlign: 'center' }}>
-                                    <div style={{ position: 'relative', width: '200px', height: '50px', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
-                                        <div style={{ borderBottom: '1px solid #1e293b', width: '200px', position: 'absolute', bottom: 0 }}></div>
-                                        <img src="/director_signature.png" style={{ height: '60px', opacity: 0.8, marginBottom: '5px', zIndex: 5, position: 'relative' }} alt="Signature" onError={(e) => {
-                                            (e.target as HTMLImageElement).onerror = null;
-                                            (e.target as HTMLImageElement).src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
-                                        }} />
-                                    </div>
-                                    <span style={{ fontSize: '14px', color: '#64748b', display: 'block', marginTop: '5px' }}>Director Signature</span>
-                                    <span style={{ fontSize: '12px', color: '#94a3b8' }}>( นาง ลัลน์นภัทร ทวีขจรวงศ์ )</span>
-                                </div>
-                            </div>
-
-                            {/* Background Decorative Circles Removed to prevent html2canvas crash */}
+                    {/* Level Badge */}
+                    {grade.level && (
+                        <div className="flex items-center gap-2 mb-4">
+                            <span className="text-xs text-slate-400 uppercase tracking-wider">ระดับ:</span>
+                            <span className="bg-indigo-600/30 text-indigo-300 px-3 py-1 rounded-full text-xs font-bold border border-indigo-500/40">
+                                {grade.level} {grade.subLevel || ''}
+                            </span>
+                            <span className="text-xs text-slate-500 mx-1">|</span>
+                            <span className="bg-emerald-600/30 text-emerald-300 px-3 py-1 rounded-full text-xs font-bold border border-emerald-500/40">
+                                Grade: {grade.finalGrade}
+                            </span>
                         </div>
+                    )}
+
+                    {/* Certificate Image / No Certificate Message */}
+                    <div className="w-full overflow-auto flex justify-center p-4 bg-slate-800 rounded-2xl shadow-inner mb-6 min-h-[300px] items-center">
+                        {certificateImageUrl ? (
+                            <img
+                                src={certificateImageUrl}
+                                alt={`Certificate for ${grade?.subjectName}`}
+                                className="rounded-lg shadow-lg"
+                                style={{
+                                    maxWidth: '100%',
+                                    width: 'auto',
+                                    height: 'auto',
+                                    maxHeight: '65vh',
+                                    objectFit: 'contain',
+                                    aspectRatio: '297 / 210'
+                                }}
+                            />
+                        ) : (
+                            <div className="text-center text-slate-500">
+                                <AlertCircle className="w-16 h-16 mx-auto mb-4 opacity-40" />
+                                <p className="text-lg font-bold">ยังไม่ได้ออกใบประกาศ</p>
+                                <p className="text-sm text-slate-600 mt-1">รอคุณครูออกใบประกาศให้กับนักเรียน</p>
+                            </div>
+                        )}
                     </div>
 
-                    <Button
-                        size="lg"
-                        className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-full px-12 py-6 text-lg font-bold shadow-xl flex items-center gap-3 transition-transform hover:scale-105 active:scale-95 mb-4"
-                        onClick={handleDownload}
-                        disabled={generating}
-                    >
-                        {generating ? <Loader2 className="w-6 h-6 animate-spin" /> : <Download className="w-6 h-6" />}
-                        {generating ? 'กำลังสร้างไฟล์ PDF...' : 'Download Certificate (PDF)'}
-                    </Button>
-                    <p className="text-slate-400 text-xs">ไฟล์จะถูกดาวน์โหลดในสัดส่วน A4 แนวนอนที่ความละเอียดสูงพิเศษ</p>
+                    {certificateImageUrl && (
+                        <Button
+                            size="lg"
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-full px-12 py-6 text-lg font-bold shadow-xl flex items-center gap-3 transition-transform hover:scale-105 active:scale-95 mb-4"
+                            onClick={handleDownload}
+                            disabled={generating}
+                        >
+                            {generating ? <Loader2 className="w-6 h-6 animate-spin" /> : <Download className="w-6 h-6" />}
+                            {generating ? 'กำลังเตรียมไฟล์...' : 'ดาวน์โหลดรูปภาพ (JPG)'}
+                        </Button>
+                    )}
                 </div>
             </DialogContent>
-
-            {/* CSS override for scaling in preview */}
-            <style jsx>{`
-                .certificate-render-target {
-                    height: calc(210mm * 0.6) !important;
-                    width: calc(297mm * 0.6) !important;
-                }
-                @media (max-width: 768px) {
-                    .certificate-render-target {
-                        transform: scale(0.3) !important;
-                        height: calc(210mm * 0.3) !important;
-                        width: calc(297mm * 0.3) !important;
-                    }
-                }
-            `}</style>
         </Dialog>
     );
 }

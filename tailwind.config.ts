@@ -79,6 +79,10 @@ const config: Config = {
                 "glow": {
                     "0%, 100%": { boxShadow: "0 0 10px rgba(139, 92, 246, 0.3)" },
                     "50%": { boxShadow: "0 0 20px rgba(139, 92, 246, 0.6)" },
+                },
+                "shimmer": {
+                    "0%": { transform: "translateX(-100%)" },
+                    "100%": { transform: "translateX(100%)" },
                 }
             },
             animation: {
@@ -86,6 +90,7 @@ const config: Config = {
                 "accordion-up": "accordion-up 0.2s ease-out",
                 "fade-in-up": "fade-in-up 0.6s ease-out forwards",
                 "glow": "glow 3s infinite",
+                "shimmer": "shimmer 1.5s infinite",
             },
         },
     },

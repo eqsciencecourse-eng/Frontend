@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogTitle, DialogHeader, DialogDescription } f
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { API_ENDPOINTS } from '@/lib/api-config';
-import { CalendarCheck, X, Trash2, Edit2, Save, BarChart3, History, TrendingUp, CheckSquare, Monitor, Video, XSquare, FileSignature, Clock, Award } from 'lucide-react';
+import { CalendarCheck, X, Trash2, Edit2, Save, BarChart3, History, TrendingUp, CheckSquare, Monitor, Video, XSquare, FileSignature, Clock, Award, Loader2 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
@@ -34,6 +34,7 @@ export default function StudentDetailsDialog({ isOpen, onClose, student, subject
     // [NEW] History Log State
     const [historyLogs, setHistoryLogs] = useState<any[]>([]);
     const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+    const [resavingAll, setResavingAll] = useState(false);
 
     // [NEW] Evaluation Selected Attendance Date
     const [selectedEvalRecordId, setSelectedEvalRecordId] = useState<string | null>(null);
@@ -174,6 +175,54 @@ export default function StudentDetailsDialog({ isOpen, onClose, student, subject
         } catch (error) {
             toast.error('เกิดข้อผิดพลาด');
         }
+    };
+
+    const handleResaveAllScores = async () => {
+        if (historyLogs.length === 0) {
+            toast.error('ไม่มีประวัติคะแนนให้บันทึก');
+            return;
+        }
+        setResavingAll(true);
+        const token = await teacher.getIdToken();
+        let successCount = 0;
+        let failCount = 0;
+
+        for (const log of historyLogs) {
+            try {
+                const payload = {
+                    studentId: student._id || student.id,
+                    teacherId: teacher._id || teacher.id || teacher.uid,
+                    subjectId: subject?._id || subject?.id || 'general',
+                    date: log.date,
+                    level: log.level,
+                    subLevel: log.subLevel,
+                    scores: log.scores
+                };
+
+                const res = await fetch(API_ENDPOINTS.EVALUATIONS.UPDATE(log._id || log.id), {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token}`
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                if (res.ok) successCount++;
+                else failCount++;
+            } catch (error) {
+                failCount++;
+            }
+        }
+
+        setResavingAll(false);
+        if (failCount === 0) {
+            toast.success(`บันทึกคะแนนทั้งหมด ${successCount} รายการสำเร็จ`);
+        } else {
+            toast.warning(`บันทึกสำเร็จ ${successCount} รายการ, ล้มเหลว ${failCount} รายการ`);
+        }
+        fetchEvaluationHistory();
+        if (onUpdate) onUpdate();
     };
 
     const fetchAttendance = async () => {
@@ -549,6 +598,11 @@ export default function StudentDetailsDialog({ isOpen, onClose, student, subject
                                                     const isSelected = selectedEvalRecordId === record.id;
                                                     const s = (record.status || '').toLowerCase();
 
+                                                    const recordDateStr = new Date(record.date).toDateString();
+                                                    const hasEvaluation = historyLogs.some(log =>
+                                                        new Date(log.date || log.createdAt).toDateString() === recordDateStr
+                                                    );
+
                                                     // Base Unselected colors
                                                     let statusColor = 'bg-slate-100 text-slate-600';
                                                     let statusLabel = 'ไม่ทราบ';
@@ -566,12 +620,15 @@ export default function StudentDetailsDialog({ isOpen, onClose, student, subject
                                                         <button
                                                             key={record.id}
                                                             onClick={() => setSelectedEvalRecordId(record.id)}
-                                                            className={`flex flex-col items-center justify-center flex-shrink-0 px-4 py-3 rounded-none border transition-all duration-200 outline-none min-w-[110px]
+                                                            className={`flex flex-col items-center justify-center flex-shrink-0 px-4 py-3 rounded-none border transition-all duration-200 outline-none min-w-[110px] relative
                                                                 ${isSelected
                                                                     ? 'bg-indigo-700 border-indigo-700 shadow-md scale-[1.02] text-white'
                                                                     : 'bg-white border-slate-300 hover:border-indigo-400 hover:bg-slate-50 opacity-90 text-slate-600'}`
                                                             }
                                                         >
+                                                            {!hasEvaluation && (
+                                                                <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-red-500" />
+                                                            )}
                                                             <div className={`text-[10px] font-bold px-3 py-1 rounded-none border mb-2 ${statusColor.replace('text-', 'border-').replace('bg-', 'bg-')}`}>
                                                                 {statusLabel}
                                                             </div>
@@ -698,7 +755,17 @@ export default function StudentDetailsDialog({ isOpen, onClose, student, subject
                                             <History className="w-4 h-4 text-slate-400" />
                                             ประวัติการประเมิน
                                         </h4>
-                                        <span className="text-xs text-slate-400 bg-slate-100 px-2 py-1 rounded-full">{historyLogs.length} รายการ</span>
+                                        <div className="flex items-center gap-2">
+                                            <button
+                                                onClick={handleResaveAllScores}
+                                                disabled={resavingAll || historyLogs.length === 0}
+                                                className="text-xs font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-2.5 py-1 rounded-none transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1"
+                                            >
+                                                {resavingAll ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                                                บันทึกคะแนนอีกครั้ง
+                                            </button>
+                                            <span className="text-xs text-slate-400 bg-slate-100 px-2 py-1 rounded-full">{historyLogs.length} รายการ</span>
+                                        </div>
                                     </div>
 
                                     <div className="flex-1 overflow-y-auto p-0">

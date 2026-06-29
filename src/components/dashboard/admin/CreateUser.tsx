@@ -147,6 +147,9 @@ export default function CreateUser() {
     // [NEW] Manual School Input State
     const [isManualSchoolInput, setIsManualSchoolInput] = useState(false);
 
+    // [NEW] Citizen ID toggle
+    const [hasCitizenId, setHasCitizenId] = useState(false);
+
 
     const [teachers, setTeachers] = useState<{ _id: string, displayName: string, email: string }[]>([]);
 
@@ -218,6 +221,7 @@ export default function CreateUser() {
             if (savedForm) {
                 const parsed = JSON.parse(savedForm);
                 setFormData(prev => ({ ...prev, ...parsed }));
+                if (parsed.citizenId) setHasCitizenId(true);
             }
             if (savedCourses) {
                 setRegisteredCourses(JSON.parse(savedCourses));
@@ -382,7 +386,7 @@ export default function CreateUser() {
                     username: formData.username,
                     email: formData.email || undefined,
                     passwordHash: formData.password,
-                    citizenId: formData.citizenId,
+                    citizenId: hasCitizenId ? formData.citizenId : undefined,
                     studentId: formData.studentId || undefined,
                     parentName: formData.parentName,
                     parentRelation: formData.parentRelation,
@@ -438,6 +442,7 @@ export default function CreateUser() {
                 // Reset form after 2 seconds
                 setTimeout(() => {
                     setSuccess(false);
+                    setHasCitizenId(false);
                     setFormData({
                         username: '',
                         password: '',
@@ -579,6 +584,7 @@ export default function CreateUser() {
     };
 
     const clearForm = () => {
+        setHasCitizenId(false);
         setFormData({
             username: '',
             password: '',
@@ -766,7 +772,29 @@ export default function CreateUser() {
                         {/* Citizen ID */}
                         <div className="space-y-2 col-span-1 md:col-span-2">
                             <Label className="font-semibold text-gray-700">เลขประจำตัวประชาชน</Label>
-                            <Input name="citizenId" placeholder="เลขประจำตัวประชาชน 13 หลัก" value={formData.citizenId} onChange={handleChange} maxLength={13} className="h-11 rounded-none border-slate-200" />
+                            <div className="flex gap-2">
+                                <Button
+                                    type="button"
+                                    variant={hasCitizenId ? "default" : "outline"}
+                                    onClick={() => setHasCitizenId(true)}
+                                    className={`h-11 px-6 rounded-none ${hasCitizenId ? 'bg-indigo-600 hover:bg-indigo-700 text-white' : 'border-slate-200 text-slate-600'}`}
+                                >
+                                    มีบัตรประชาชน
+                                </Button>
+                                <Button
+                                    type="button"
+                                    variant={!hasCitizenId ? "default" : "outline"}
+                                    onClick={() => { setHasCitizenId(false); setFormData(prev => ({ ...prev, citizenId: '' })); }}
+                                    className={`h-11 px-6 rounded-none ${!hasCitizenId ? 'bg-slate-600 hover:bg-slate-700 text-white' : 'border-slate-200 text-slate-600'}`}
+                                >
+                                    ไม่มีบัตรประชาชน
+                                </Button>
+                            </div>
+                            {hasCitizenId ? (
+                                <Input name="citizenId" placeholder="กรอกเลขประจำตัวประชาชน 13 หลัก" value={formData.citizenId} onChange={handleChange} maxLength={13} className="h-11 rounded-none border-slate-200" />
+                            ) : (
+                                <p className="text-xs text-slate-400 mt-1">ไม่ต้องใส่เลขประจำตัวประชาชน</p>
+                            )}
                         </div>
 
                         {/* Student ID */}
@@ -794,12 +822,12 @@ export default function CreateUser() {
                             <Label className="font-semibold text-gray-700">อีเมล (Email)</Label>
                             <Input
                                 name="email"
-                                type="email"
-                                placeholder="อีเมลของนักเรียน (ใช้เชื่อมโยงข้อมูลในระบบจัดการข้อมูลผู้ใช้)"
+                                placeholder="example@mail.com (ไม่บังคับ)"
                                 value={formData.email}
                                 onChange={handleChange}
                                 className="h-11 rounded-none border-slate-200"
                             />
+                            <p className="text-xs text-slate-400 mt-1">กรุณามี @ ด้วย (ไม่บังคับ ไม่ต้องใส่ก็ได้)</p>
                         </div>
 
                         {/* First Name */}

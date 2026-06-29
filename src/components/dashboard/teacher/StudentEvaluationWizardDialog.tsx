@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { Calculator, Award, CalendarCheck, Settings2, Download, LayoutTemplate, X, ChevronRight, Loader2, Image as ImageIcon, Mail, Send, FileText } from "lucide-react";
+import { Calculator, Award, CalendarCheck, Settings2, Download, LayoutTemplate, X, ChevronRight, Loader2, Image as ImageIcon, Mail, Send, FileText, ArrowLeft, Upload } from "lucide-react";
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { API_ENDPOINTS, buildApiUrl } from '@/lib/api-config';
@@ -29,9 +29,10 @@ interface StudentEvaluationWizardProps {
     subject: any;
     teacher: any;
     onUpdate?: () => void;
+    onBack?: () => void;
 }
 
-export default function StudentEvaluationWizardDialog({ isOpen, onClose, student, subject, teacher, onUpdate }: StudentEvaluationWizardProps) {
+export default function StudentEvaluationWizardDialog({ isOpen, onClose, student, subject, teacher, onUpdate, onBack }: StudentEvaluationWizardProps) {
     const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(1);
     const [certLayout, setCertLayout] = useState({
         titleX: 0, titleY: 0, titleScale: 1,
@@ -213,7 +214,9 @@ export default function StudentEvaluationWizardDialog({ isOpen, onClose, student
                     subjectId: subject?._id || subject?.id,
                     subjectName: subject?.name,
                     finalGrade: finalGrade,
-                    teacherRemark: remark
+                    teacherRemark: remark,
+                    level: selectedLevel,
+                    subLevel: selectedSubLevel
                 })
             });
         } catch (err) {
@@ -328,6 +331,48 @@ export default function StudentEvaluationWizardDialog({ isOpen, onClose, student
         } catch (error) {
             console.error("Email Sending Error:", error);
             toast.error("เกิดข้อผิดพลาดในการส่งอีเมล");
+        } finally {
+            setGeneratingPDF(false);
+        }
+    };
+
+    const handleSendToStudentWebsite = async () => {
+        if (!student) return;
+        toast.info(`กำลังบันทึกใบประกาศสำหรับ ${student.displayName || student.firstName} ...`);
+        const canvas = await generateCanvas();
+        if (!canvas) return;
+
+        try {
+            const imgData = canvas.toDataURL('image/jpeg', 0.9);
+            const token = await teacher.getIdToken();
+
+            const res = await fetch(API_ENDPOINTS.GRADES.BASE + '/finalize', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    studentId: student._id || student.id,
+                    subjectId: subject?._id || subject?.id,
+                    subjectName: subject?.name,
+                    finalGrade: finalGrade,
+                    teacherRemark: remark,
+                    certificateImage: imgData,
+                    level: selectedLevel,
+                    subLevel: selectedSubLevel
+                })
+            });
+
+            if (res.ok) {
+                toast.success(`บันทึกใบประกาศให้นักเรียนในเว็บไซต์เรียบร้อย`);
+                if (onUpdate) onUpdate();
+            } else {
+                toast.error("บันทึกไม่สำเร็จ");
+            }
+        } catch (error) {
+            console.error("Send to Website Error:", error);
+            toast.error("เกิดข้อผิดพลาดในการบันทึกใบประกาศ");
         } finally {
             setGeneratingPDF(false);
         }
@@ -481,6 +526,11 @@ export default function StudentEvaluationWizardDialog({ isOpen, onClose, student
                     {/* Left Sidebar - Steps */}
                     <div className="w-64 bg-indigo-900 text-white p-6 flex flex-col">
                         <div className="mb-8">
+                            {onBack && (
+                                <button onClick={onBack} className="text-indigo-200 hover:text-white text-sm font-bold mb-3 flex items-center gap-1 transition-colors">
+                                    <ArrowLeft className="h-4 w-4" /> ย้อนกลับ
+                                </button>
+                            )}
                             <h2 className="text-xl font-bold mb-1">ตัดเกรด/ใบประกาศ</h2>
                             <p className="text-indigo-200 text-xs">วิชา: {subject.name}</p>
                         </div>
@@ -1113,6 +1163,19 @@ export default function StudentEvaluationWizardDialog({ isOpen, onClose, student
 
                                         <div className="space-y-3 pt-3 border-t border-slate-200">
                                             <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">ส่งตรงให้นักเรียน</Label>
+                                            <Button
+                                                onClick={handleSendToStudentWebsite}
+                                                disabled={generatingPDF}
+                                                className="w-full h-14 flex items-center justify-start gap-3 bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm transition-all"
+                                            >
+                                                {generatingPDF ? <Loader2 className="w-6 h-6 animate-spin" /> : <Upload className="w-6 h-6" />}
+                                                <div className="text-left">
+                                                    <div className="font-bold text-sm">ส่งให้กับนักเรียนในเว็บไซต์</div>
+                                                    <div className="text-[10px] text-emerald-200 font-normal">
+                                                        บันทึกใบประกาศในระบบ ให้นักเรียนดูได้ที่หน้าแดชบอร์ด
+                                                    </div>
+                                                </div>
+                                            </Button>
                                             <Button
                                                 onClick={handleSendEmail}
                                                 disabled={generatingPDF || !student?.email}

@@ -8,10 +8,11 @@ import { toast } from 'sonner';
 import { API_ENDPOINTS } from '@/lib/api-config';
 import {
     Users, BookOpen, ArrowLeft, Search, GraduationCap,
-    Mail, ChevronRight, ClipboardList, Award
+    Mail, ChevronRight, ClipboardList, Award, ScrollText
 } from 'lucide-react';
 import StudentDetailsDialog from '@/components/dashboard/teacher/StudentDetailsDialog';
 import StudentEvaluationWizardDialog from '@/components/dashboard/teacher/StudentEvaluationWizardDialog';
+import CertificateManageDialog from '@/components/dashboard/admin/CertificateManageDialog';
 
 export default function AdminScoreManagement() {
     const { user } = useAuth();
@@ -31,6 +32,12 @@ export default function AdminScoreManagement() {
     }>({ isOpen: false, student: null, subject: null });
 
     const [gradeDialog, setGradeDialog] = useState<{
+        isOpen: boolean;
+        student: any;
+        subject: any;
+    }>({ isOpen: false, student: null, subject: null });
+
+    const [certDialog, setCertDialog] = useState<{
         isOpen: boolean;
         student: any;
         subject: any;
@@ -144,7 +151,7 @@ export default function AdminScoreManagement() {
         );
     }
 
-    // ==================== VIEW: Student list (with 2 buttons) ====================
+    // ==================== VIEW: Student list (with 3 buttons) ====================
     if (selectedTeacher && selectedSubject) {
         const teacherId = normalizeId(selectedTeacher._id || selectedTeacher.id);
         const enrolledStudents = getStudentsForSubject(teacherId, selectedSubject);
@@ -175,7 +182,7 @@ export default function AdminScoreManagement() {
                                     <th className="text-left px-4 py-3 font-bold text-slate-600">ชื่อ-นามสกุล</th>
                                     <th className="text-left px-4 py-3 font-bold text-slate-600">ชื่อเล่น</th>
                                     <th className="text-left px-4 py-3 font-bold text-slate-600">รหัสนักเรียน</th>
-                                    <th className="text-center px-4 py-3 font-bold text-slate-600" colSpan={2}>ระบบจัดการ</th>
+                                    <th className="text-center px-4 py-3 font-bold text-slate-600" colSpan={3}>ระบบจัดการ</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
@@ -205,6 +212,16 @@ export default function AdminScoreManagement() {
                                             })}
                                                 className="rounded-none bg-amber-600 hover:bg-amber-700 text-white text-xs h-8 gap-1.5">
                                                 <Award className="h-3.5 w-3.5" /> ออกเกรด
+                                            </Button>
+                                        </td>
+                                        <td className="px-4 py-3 text-center">
+                                            <Button size="sm" onClick={() => setCertDialog({
+                                                isOpen: true,
+                                                student: s,
+                                                subject: { _id: getSubjectId(selectedSubject), name: selectedSubject }
+                                            })}
+                                                className="rounded-none bg-emerald-600 hover:bg-emerald-700 text-white text-xs h-8 gap-1.5">
+                                                <ScrollText className="h-3.5 w-3.5" /> ใบประกาศ
                                             </Button>
                                         </td>
                                     </tr>
@@ -238,10 +255,21 @@ export default function AdminScoreManagement() {
                     <StudentEvaluationWizardDialog
                         isOpen={gradeDialog.isOpen}
                         onClose={() => setGradeDialog({ isOpen: false, student: null, subject: null })}
+                        onBack={() => setGradeDialog({ isOpen: false, student: null, subject: null })}
                         student={gradeDialog.student}
                         subject={gradeDialog.subject}
                         teacher={user}
                         onUpdate={fetchData}
+                    />
+                )}
+
+                {/* Certificate Manage Dialog */}
+                {certDialog.isOpen && (
+                    <CertificateManageDialog
+                        isOpen={certDialog.isOpen}
+                        onClose={() => setCertDialog({ isOpen: false, student: null, subject: null })}
+                        student={certDialog.student}
+                        subject={certDialog.subject}
                     />
                 )}
             </div>
@@ -414,6 +442,7 @@ export default function AdminScoreManagement() {
                     </div>
                 )}
             </div>
+
         </div>
     );
 }

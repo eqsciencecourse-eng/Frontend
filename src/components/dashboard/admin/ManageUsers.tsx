@@ -813,7 +813,7 @@ export default function ManageUsers({ mode = 'manual' }: { mode?: 'manual' | 're
         }
 
         return (
-            <div className={`flex items-center gap-2 px-2.5 py-1.5 rounded-none border ${colorClass} w-full min-w-[140px]`}>
+            <div className={`flex items-center gap-1.5 px-2 py-1 rounded-none border ${colorClass} w-full min-w-[100px]`}>
                 {icon}
                 <span className="truncate font-medium text-xs font-itim">{subjectName}</span>
             </div>
@@ -1370,8 +1370,8 @@ export default function ManageUsers({ mode = 'manual' }: { mode?: 'manual' | 're
                         </div>
 
                         {/* User Table */}
-                        <div className="rounded-none border border-slate-200 overflow-hidden">
-                            <table className="w-full text-sm text-left">
+                        <div className="rounded-none border border-slate-200 overflow-x-auto">
+                            <table className="w-full text-sm text-left min-w-[900px]">
                                 <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200">
                                     <tr>
                                         <th className="px-4 py-3 w-[80px]">รหัส</th>
@@ -1415,7 +1415,7 @@ export default function ManageUsers({ mode = 'manual' }: { mode?: 'manual' | 're
                                                         </div>
                                                     </div>
                                                 </td>
-                                                <td className="px-4 py-3 min-w-[200px]">
+                                                <td className="px-4 py-3 min-w-[130px] max-w-[200px]">
                                                     <div className="flex flex-col gap-1">
                                                         {user.enrolledSubjects?.length ? (
                                                             user.enrolledSubjects.map((subject, idx) => (
@@ -1429,7 +1429,7 @@ export default function ManageUsers({ mode = 'manual' }: { mode?: 'manual' | 're
                                                 <td className="px-4 py-3">
                                                     {user.studentName || '-'}
                                                 </td>
-                                                <td className="px-4 py-3 max-w-[180px] truncate" title={user.email}>
+                                                <td className="px-4 py-3 max-w-[150px] truncate text-xs" title={user.email}>
                                                     {user.email && !user.email.includes('placeholder.com') && !user.email.includes('no-email') ? user.email : '-'}
                                                 </td>
                                                 <td className="px-4 py-3">

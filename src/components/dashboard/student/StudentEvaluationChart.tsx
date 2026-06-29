@@ -1,10 +1,8 @@
-'use client';
-// Last Updated: 2026-02-01 (Force Refresh)
+﻿'use client';
 
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Loader2, Crown, Zap, Trophy, Target, Star, History as HistoryIcon } from 'lucide-react';
+import { Loader2, Target, ChevronLeft, ChevronRight, BookOpen } from 'lucide-react';
 import { API_ENDPOINTS } from '@/lib/api-config';
 import { useAuth } from '@/context/AuthContext';
 import {
@@ -18,7 +16,6 @@ import {
 } from 'chart.js';
 import { Radar } from 'react-chartjs-2';
 
-// Register ChartJS components
 ChartJS.register(
     RadialLinearScale,
     PointElement,
@@ -37,133 +34,155 @@ const SKILL_LABELS: Record<string, string> = {
     focus: 'สมาธิ'
 };
 
-const LEVEL_TITLES = [
-    { min: 0, title: 'ผู้เรียนรู้ระดับต้น', color: 'text-slate-500', bg: 'bg-slate-100', icon: Star },
-    { min: 5, title: 'ผู้ฝึกฝน', color: 'text-blue-500', bg: 'bg-blue-100', icon: Zap },
-    { min: 10, title: 'นักเรียนผู้ชำนาญ', color: 'text-indigo-500', bg: 'bg-indigo-100', icon: Zap },
-    { min: 20, title: 'นักพัฒนาผู้เชี่ยวชาญ', color: 'text-purple-500', bg: 'bg-purple-100', icon: Trophy },
-    { min: 40, title: 'จอมเวทย์', color: 'text-amber-500', bg: 'bg-amber-100', icon: Crown },
-    { min: 60, title: 'ตำนาน', color: 'text-red-500', bg: 'bg-red-100', icon: Crown }
+const skills = ['creativity', 'planning', 'problemSolving', 'design', 'programming', 'focus'];
+
+const THEME_COLORS = [
+    { bg: 'rgba(99, 102, 241, 0.2)', border: 'rgba(99, 102, 241, 1)', point: 'rgba(99, 102, 241, 1)' },
+    { bg: 'rgba(16, 185, 129, 0.2)', border: 'rgba(16, 185, 129, 1)', point: 'rgba(16, 185, 129, 1)' },
+    { bg: 'rgba(245, 158, 11, 0.2)', border: 'rgba(245, 158, 11, 1)', point: 'rgba(245, 158, 11, 1)' },
+    { bg: 'rgba(139, 92, 246, 0.2)', border: 'rgba(139, 92, 246, 1)', point: 'rgba(139, 92, 246, 1)' },
+    { bg: 'rgba(236, 72, 153, 0.2)', border: 'rgba(236, 72, 153, 1)', point: 'rgba(236, 72, 153, 1)' },
 ];
+
+interface LevelGroup {
+    level: string;
+    subLevel: string;
+    label: string;
+    subjectName: string;
+    count: number;
+    averages: Record<string, number>;
+}
 
 export default function StudentEvaluationChart({ studentId }: { studentId?: string }) {
     const { user } = useAuth();
-    const [data, setData] = useState<any>(null);
+    const [groups, setGroups] = useState<LevelGroup[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
+    const [currentIndex, setCurrentIndex] = useState(0);
 
-    // If no studentId provided, try to use current user
     const targetId = studentId || user?.uid;
 
     useEffect(() => {
         if (!targetId) return;
-
         const fetchData = async () => {
+            setLoading(true);
+            setError(false);
             try {
                 const token = await user?.getIdToken();
-                const res = await fetch(API_ENDPOINTS.EVALUATIONS.GET_STUDENT_SUMMARY(targetId), {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
+                const [histRes, subjectsRes] = await Promise.all([
+                    fetch(API_ENDPOINTS.EVALUATIONS.GET_STUDENT_HISTORY(targetId), {
+                        headers: { Authorization: 'Bearer ' + token }
+                    }),
+                    fetch(API_ENDPOINTS.SUBJECTS.LIST)
+                ]);
 
-                if (res.ok) {
-                    const json = await res.json();
-                    setData(json || { totalEvaluations: 0, level: 1, totalXP: 0, averages: {} });
-                } else {
-                    setData({ totalEvaluations: 0, level: 1, totalXP: 0, averages: {} });
+                const subjectMap: Record<string, string> = {};
+                if (subjectsRes.ok) {
+                    const subjects = await subjectsRes.json();
+                    if (Array.isArray(subjects)) {
+                        subjects.forEach((s: any) => {
+                            subjectMap[s._id || s.id] = s.name;
+                        });
+                    }
                 }
-            } catch (err) {
-                console.error("Failed to fetch evaluation summary", err);
-                setError(true);
-                setData({ totalEvaluations: 0, level: 1, totalXP: 0, averages: {} });
-            } finally {
-                setLoading(false);
-            }
-        };
 
+                if (histRes.ok) {
+                    const logs = await histRes.json();
+                    if (Array.isArray(logs) && logs.length > 0) {
+                        const grouped: Record<string, { logs: any[]; level: string; subLevel: string; subjectId: string }> = {};
+                        logs.forEach((log: any) => {
+                            const subjectId = log.subjectId || 'unknown';
+                            const key = subjectId + '_' + (log.level || 'Basic') + '_' + (log.subLevel || '1');
+                            if (!grouped[key]) {
+                                grouped[key] = { logs: [], level: log.level || 'Basic', subLevel: log.subLevel || '1', subjectId };
+                            }
+                            grouped[key].logs.push(log);
+                        });
+                        const computed: LevelGroup[] = Object.values(grouped).map((g) => {
+                            const sum: Record<string, number> = {};
+                            skills.forEach((s) => { sum[s] = 0; });
+                            g.logs.forEach((log: any) => {
+                                if (log.scores) {
+                                    skills.forEach((s) => { sum[s] += Number(log.scores[s] || 0); });
+                                }
+                            });
+                            const averages: Record<string, number> = {};
+                            skills.forEach((s) => { averages[s] = Math.round((sum[s] / g.logs.length) * 10) / 10; });
+                            return {
+                                level: g.level,
+                                subLevel: g.subLevel,
+                                label: g.level + ' ' + g.subLevel,
+                                subjectName: subjectMap[g.subjectId] || g.subjectId,
+                                count: g.logs.length,
+                                averages
+                            };
+                        });
+                        computed.sort((a, b) => {
+                            const nameCmp = a.subjectName.localeCompare(b.subjectName);
+                            if (nameCmp !== 0) return nameCmp;
+                            const levelOrder: Record<string, number> = { Basic: 0, Inter: 1, Advance: 2 };
+                            const aOrder = levelOrder[a.level] ?? 99;
+                            const bOrder = levelOrder[b.level] ?? 99;
+                            if (aOrder !== bOrder) return aOrder - bOrder;
+                            return Number(a.subLevel) - Number(b.subLevel);
+                        });
+                        setGroups(computed);
+                        setCurrentIndex(0);
+                    } else { setGroups([]); }
+                } else { setGroups([]); }
+            } catch (err) {
+                console.error('Failed to fetch evaluation history', err);
+                setError(true);
+                setGroups([]);
+            } finally { setLoading(false); }
+        };
         fetchData();
     }, [targetId, user]);
 
-    if (loading) {
-        return (
-            <div className="flex h-[400px] items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
-            </div>
-        );
-    }
-
-    if (!data) return null;
-
-    // Prepare Chart Data for Chart.js
-    const skills = ['creativity', 'planning', 'problemSolving', 'design', 'programming', 'focus'];
+    const currentGroup = groups[currentIndex] || null;
+    const colorIndex = currentIndex % THEME_COLORS.length;
+    const theme = THEME_COLORS[colorIndex];
     const chartLabels = skills.map(key => SKILL_LABELS[key] || key);
-    const chartValues = skills.map(key => data.averages?.[key] || 0);
+    const chartValues = currentGroup ? skills.map(key => currentGroup.averages[key] || 0) : [];
 
-    const radarData = {
+    const pct = (v: number) => Math.round((v / 5) * 100);
+
+    const radarData = currentGroup ? {
         labels: chartLabels,
-        datasets: [
-            {
-                label: 'ระดับทักษะ',
-                data: chartValues,
-                backgroundColor: 'rgba(99, 102, 241, 0.2)', // Indigo 500 with opacity
-                borderColor: 'rgba(99, 102, 241, 1)',      // Indigo 500
-                pointBackgroundColor: 'rgba(99, 102, 241, 1)',
-                pointBorderColor: '#fff',
-                pointHoverBackgroundColor: '#fff',
-                pointHoverBorderColor: 'rgba(99, 102, 241, 1)',
-                borderWidth: 2,
-            },
-        ],
-    };
+        datasets: [{
+            label: 'ระดับทักษะ',
+            data: chartValues,
+            backgroundColor: theme.bg,
+            borderColor: theme.border,
+            pointBackgroundColor: theme.point,
+            pointBorderColor: '#fff',
+            pointHoverBackgroundColor: '#fff',
+            pointHoverBorderColor: theme.point,
+            borderWidth: 2,
+        }],
+    } : null;
 
     const radarOptions = {
         scales: {
             r: {
-                angleLines: {
-                    color: 'rgba(0, 0, 0, 0.1)'
-                },
-                grid: {
-                    color: 'rgba(0, 0, 0, 0.1)'
-                },
-                pointLabels: {
-                    font: {
-                        size: 12,
-                        weight: 600,
-                        family: "'Sarabun', sans-serif" // Ensure Thai font support if available
-                    },
-                    color: '#64748b' // Slate 500
-                },
-                suggestedMin: 0,
-                suggestedMax: 5,
-                ticks: {
-                    display: false, // Hide numeric ticks on axis
-                    stepSize: 1
-                }
+                angleLines: { color: 'rgba(0, 0, 0, 0.1)' },
+                grid: { color: 'rgba(0, 0, 0, 0.1)' },
+                pointLabels: { font: { size: 12, weight: 600, family: "'Sarabun', sans-serif" }, color: '#64748b' },
+                suggestedMin: 0, suggestedMax: 5,
+                ticks: { display: false, stepSize: 1 }
             }
         },
         plugins: {
-            legend: {
-                display: false
-            },
+            legend: { display: false },
             tooltip: {
-                backgroundColor: 'rgba(255, 255, 255, 0.9)',
-                titleColor: '#1e293b',
-                bodyColor: '#1e293b',
-                borderColor: '#e2e8f0',
-                borderWidth: 1,
-                padding: 10,
-                boxPadding: 4,
-                usePointStyle: true,
+                backgroundColor: 'rgba(255, 255, 255, 0.9)', titleColor: '#1e293b', bodyColor: '#1e293b',
+                borderColor: '#e2e8f0', borderWidth: 1, padding: 10, boxPadding: 4, usePointStyle: true,
                 callbacks: {
                     label: (context: any) => {
                         let label = context.dataset.label || '';
-                        if (label) {
-                            label += ': ';
-                        }
+                        if (label) label += ': ';
                         if (context.parsed.r !== null) {
-                            // Custom tooltip text instead of raw number
-                            const val = context.parsed.r;
-                            const rating = val === 5 ? 'ดีมาก (5/5)' : val >= 3 ? 'พอใช้' : 'จุดที่พัฒนาได้';
-                            label += rating;
+                            label += pct(context.parsed.r) + '%';
                         }
                         return label;
                     }
@@ -173,86 +192,65 @@ export default function StudentEvaluationChart({ studentId }: { studentId?: stri
         maintainAspectRatio: false
     };
 
-    // Calculate Title
-    const currentLevel = data.level || 1;
-    // Safe lookup for level title
-    const levelInfo = [...LEVEL_TITLES].reverse().find(l => currentLevel >= l.min) || LEVEL_TITLES[0];
-    const Icon = levelInfo.icon;
+    if (loading) {
+        return (
+            <div className="flex h-[400px] items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
+            </div>
+        );
+    }
+
+    if (error || !currentGroup) {
+        return (
+            <Card className="border-slate-200 shadow-sm">
+                <CardContent className="flex flex-col items-center justify-center py-20 text-slate-400 gap-3">
+                    <Target className="h-12 w-12 opacity-30" />
+                    <p className="text-sm font-medium">ยังไม่มีผลการประเมิน</p>
+                </CardContent>
+            </Card>
+        );
+    }
 
     return (
-        <div className="space-y-6">
-            {/* 1. Level & Stats Header */}
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                <Card className="relative overflow-hidden border-indigo-100 bg-gradient-to-br from-indigo-50 to-white shadow-sm transition-all hover:shadow-md md:col-span-2">
-                    <div className="absolute right-[-20px] top-[-20px] h-32 w-32 rounded-full bg-indigo-100/50 blur-3xl text-indigo-200" />
-                    <CardHeader className="flex flex-row items-center justify-between pb-2 z-10 relative">
-                        <CardTitle className="text-sm font-bold text-slate-600 flex items-center gap-2">
-                            <Star className="h-4 w-4 text-indigo-500" />
-                            สรุปภาพรวมพัฒนาการของน้อง
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="z-10 relative">
-                        <div className="flex items-center gap-6">
-                            <div className={`flex shrink-0 h-20 w-20 items-center justify-center rounded-2xl bg-white shadow-md ring-4 ${levelInfo.color.replace('text', 'ring').replace('500', '100')}`}>
-                                <Icon className={`h-10 w-10 ${levelInfo.color}`} />
-                            </div>
-                            <div>
-                                <h3 className={`text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-slate-800 to-slate-600`}>
-                                    ระดับ: {levelInfo.title}
-                                </h3>
-                                <div className="mt-3 flex items-center gap-4">
-                                    <div className="flex flex-col">
-                                        <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-0.5">ถูกประเมินแล้ว</span>
-                                        <div className="flex items-center gap-1.5 text-slate-700 bg-white px-2.5 py-1 rounded-md border border-slate-100 shadow-sm">
-                                            <HistoryIcon className="w-3.5 h-3.5 text-indigo-400" />
-                                            <span className="text-sm font-bold">{data.totalEvaluations} คาบเรียน</span>
-                                        </div>
-                                    </div>
-                                    <div className="flex flex-col">
-                                        <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-0.5">คะแนนสะสม (XP)</span>
-                                        <div className="flex items-center gap-1.5 text-slate-700 bg-white px-2.5 py-1 rounded-md border border-slate-100 shadow-sm">
-                                            <Zap className="w-3.5 h-3.5 text-yellow-500" />
-                                            <span className="text-sm font-bold">{data.totalXP} แต้ม</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                <Card className="border-emerald-100 bg-gradient-to-br from-emerald-50 to-white shadow-sm transition-all hover:shadow-md flex flex-col justify-center items-center text-center p-6">
-                    <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-sm mb-4 border border-emerald-100">
-                        <Target className="h-8 w-8 text-emerald-500" />
+        <div className="space-y-4">
+            {groups.length > 1 && (
+                <div className="flex items-center justify-center gap-3">
+                    <button onClick={() => setCurrentIndex(Math.max(0, currentIndex - 1))} disabled={currentIndex === 0} className="h-8 w-8 flex items-center justify-center rounded-none border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
+                        <ChevronLeft className="h-4 w-4" />
+                    </button>
+                    <div className="flex items-center gap-2">
+                        {groups.map((g, i) => (
+                            <button key={g.label + g.subjectName} onClick={() => setCurrentIndex(i)} className={'h-2 rounded-none transition-all ' + (i === currentIndex ? 'w-6 bg-indigo-600' : 'w-2 bg-slate-300 hover:bg-slate-400')} />
+                        ))}
                     </div>
-                    <div className="space-y-1">
-                        <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">สถานะการเรียน</h4>
-                        <p className="text-xl font-bold text-emerald-600">กำลังศึกษา</p>
-                    </div>
-                </Card>
-            </div>
+                    <button onClick={() => setCurrentIndex(Math.min(groups.length - 1, currentIndex + 1))} disabled={currentIndex === groups.length - 1} className="h-8 w-8 flex items-center justify-center rounded-none border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
+                        <ChevronRight className="h-4 w-4" />
+                    </button>
+                </div>
+            )}
 
-            {/* 2. Chart.js Radar Chart (Premium & Stable) */}
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
                 <Card className="lg:col-span-2 overflow-hidden border-slate-200 shadow-sm relative">
                     <CardHeader className="border-b border-slate-50 bg-slate-50/30">
                         <div className="flex items-center justify-between">
                             <CardTitle className="flex items-center gap-2 text-lg font-bold text-slate-800">
                                 <Target className="h-5 w-5 text-indigo-500" />
-                                วิเคราะห์ความสามารถ
+                                ระดับ {currentGroup.label}
                             </CardTitle>
+                            <span className="text-xs text-slate-400 bg-slate-100 px-2 py-1">{currentGroup.count} ครั้ง</span>
                         </div>
+                        <p className="flex items-center gap-1.5 text-sm text-slate-500 mt-1">
+                            <BookOpen className="h-4 w-4" />
+                            {currentGroup.subjectName}
+                        </p>
                     </CardHeader>
                     <CardContent className="p-6">
                         <div className="relative h-[400px] w-full flex items-center justify-center">
-                            <div className="w-full h-full">
-                                <Radar data={radarData} options={radarOptions as any} />
-                            </div>
+                            <div className="w-full h-full">{radarData && <Radar data={radarData} options={radarOptions as any} />}</div>
                         </div>
                     </CardContent>
                 </Card>
 
-                {/* 3. Skill List (Progress Bars) */}
                 <Card className="border-slate-200 shadow-sm">
                     <CardHeader>
                         <CardTitle className="text-base font-bold text-slate-700">รายละเอียดทักษะ</CardTitle>
@@ -261,22 +259,15 @@ export default function StudentEvaluationChart({ studentId }: { studentId?: stri
                         {skills.map((key, index) => {
                             const val = chartValues[index];
                             const label = chartLabels[index];
+                            const percent = pct(val);
                             return (
                                 <div key={key}>
                                     <div className="mb-2 flex items-center justify-between">
                                         <span className="text-sm font-medium text-slate-600">{label}</span>
-                                        <span className="text-xs font-bold text-slate-400">
-                                            {val === 5 ? 'ยอดเยี่ยม (5/5)' : val >= 3 ? `ดี (${val.toFixed(1)}/5)` : `ควรพัฒนา (${val.toFixed(1)}/5)`}
-                                        </span>
+                                        <span className="text-xs font-bold text-slate-400">{percent}%</span>
                                     </div>
                                     <div className="h-2.5 w-full overflow-hidden rounded-full bg-slate-100">
-                                        <div
-                                            className={`h-full rounded-full transition-all duration-1000 ease-out ${val === 5 ? 'bg-gradient-to-r from-emerald-400 to-emerald-500' :
-                                                val >= 3 ? 'bg-gradient-to-r from-blue-400 to-indigo-500' :
-                                                    'bg-gradient-to-r from-orange-400 to-orange-500'
-                                                }`}
-                                            style={{ width: `${(val / 5) * 100}%` }}
-                                        />
+                                        <div className={'h-full rounded-full transition-all duration-1000 ease-out ' + (percent >= 80 ? 'bg-gradient-to-r from-emerald-400 to-emerald-500' : percent >= 60 ? 'bg-gradient-to-r from-blue-400 to-indigo-500' : 'bg-gradient-to-r from-orange-400 to-orange-500')} style={{ width: percent + '%' }} />
                                     </div>
                                 </div>
                             );

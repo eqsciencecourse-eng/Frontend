@@ -130,7 +130,7 @@ function AdminDashboardContent() {
             <AdminSidebar activeTab={activeTab} onTabChange={setActiveTab} />
 
             {/* Main Content Area */}
-            <main className="flex-1 ml-64 p-8 transition-all duration-300 ease-in-out">
+            <main className="flex-1 ml-[320px] p-8 transition-all duration-300 ease-in-out" style={{ zoom: '80%', transformOrigin: 'top left' }}>
                 {/* Header for current section */}
                 <div className="mb-8 flex items-center justify-between">
                     <div>
