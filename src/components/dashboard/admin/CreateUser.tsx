@@ -13,6 +13,12 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 
+const STORAGE_KEYS = {
+    FORM: 'createUser_formData',
+    COURSES: 'createUser_registeredCourses',
+    LAST_STUDENT_ID: 'createUser_lastStudentId',
+};
+
 const EDUCATION_LEVELS = [
     { value: 'k1', label: 'อนุบาล 1' },
     { value: 'k2', label: 'อนุบาล 2' },
@@ -84,11 +90,13 @@ export default function CreateUser() {
     const { user } = useAuth();
     const [loading, setLoading] = useState(false);
     const [success, setSuccess] = useState(false);
+    const [lastStudentId, setLastStudentId] = useState<string | null>(null);
 
     // Form Data
     const [formData, setFormData] = useState({
         username: '',
         password: '',
+        email: '',
         citizenId: '', // [NEW]
         parentName: '',
         parentRelation: '', // [NEW]
@@ -109,6 +117,7 @@ export default function CreateUser() {
         address: '', // [NEW]
         school: '',
         educationLevel: '',
+        studentId: '',
     });
 
     // Subject & Time State
@@ -176,8 +185,71 @@ export default function CreateUser() {
         if (user) fetchTeachers();
     }, [user]);
 
+    // Fetch latest Student ID from database and restore form from localStorage
+    useEffect(() => {
+        // Fetch latest ID from DB
+        const fetchLastStudentId = async () => {
+            try {
+                const token = await user?.getIdToken();
+                if (!token) return;
+                const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/users/last-student-id`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data?.studentId) {
+                        setLastStudentId(data.studentId);
+                        localStorage.setItem(STORAGE_KEYS.LAST_STUDENT_ID, data.studentId);
+                    }
+                }
+            } catch (e) {
+                console.warn('Failed to fetch last student ID from DB', e);
+                // Fallback to localStorage
+                const savedLastId = localStorage.getItem(STORAGE_KEYS.LAST_STUDENT_ID);
+                if (savedLastId) setLastStudentId(savedLastId);
+            }
+        };
+        fetchLastStudentId();
+
+        // Restore form data from localStorage (survive page refresh)
+        try {
+            const savedForm = localStorage.getItem(STORAGE_KEYS.FORM);
+            const savedCourses = localStorage.getItem(STORAGE_KEYS.COURSES);
+            if (savedForm) {
+                const parsed = JSON.parse(savedForm);
+                setFormData(prev => ({ ...prev, ...parsed }));
+            }
+            if (savedCourses) {
+                setRegisteredCourses(JSON.parse(savedCourses));
+            }
+        } catch (e) {
+            console.warn('Failed to restore form data from localStorage', e);
+        }
+    }, [user]);
+
+    // Auto-save form data to localStorage on changes
+    useEffect(() => {
+        try {
+            localStorage.setItem(STORAGE_KEYS.FORM, JSON.stringify(formData));
+        } catch (e) {
+            console.warn('Failed to save form data to localStorage', e);
+        }
+    }, [formData]);
+
+    useEffect(() => {
+        try {
+            localStorage.setItem(STORAGE_KEYS.COURSES, JSON.stringify(registeredCourses));
+        } catch (e) {
+            console.warn('Failed to save courses to localStorage', e);
+        }
+    }, [registeredCourses]);
+
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
+        if (name === 'studentId') {
+            setFormData(prev => ({ ...prev, studentId: value.replace(/\D/g, '') }));
+            return;
+        }
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
@@ -274,7 +346,8 @@ export default function CreateUser() {
 
         // 2. Soft Validation (Warning Dialog)
         const missing = [];
-        if (!formData.studentName) missing.push('ชื่อนักเรียน');
+        const fullName = `${formData.prefix} ${formData.firstName} ${formData.lastName}`.trim();
+        if (!fullName) missing.push('ชื่อ-นามสกุล');
         if (!formData.educationLevel) missing.push('ระดับการศึกษา');
         if (!formData.parentName) missing.push('ชื่อผู้ปกครอง');
         if (!formData.parentRelation) missing.push('ความสัมพันธ์ผู้ปกครอง');
@@ -307,8 +380,10 @@ export default function CreateUser() {
                 },
                 body: JSON.stringify({
                     username: formData.username,
+                    email: formData.email || undefined,
                     passwordHash: formData.password,
                     citizenId: formData.citizenId,
+                    studentId: formData.studentId || undefined,
                     parentName: formData.parentName,
                     parentRelation: formData.parentRelation,
                     parentPhone: formData.parentPhone,
@@ -349,14 +424,24 @@ export default function CreateUser() {
             });
 
             if (res.ok) {
+                const createdUser = await res.json();
+                const newStudentId = createdUser?.studentId;
+                if (newStudentId) {
+                    localStorage.setItem(STORAGE_KEYS.LAST_STUDENT_ID, newStudentId);
+                    setLastStudentId(newStudentId);
+                }
                 setSuccess(true);
                 toast.success('สร้างผู้ใช้สำเร็จ');
+                // Clear localStorage backup
+                localStorage.removeItem(STORAGE_KEYS.FORM);
+                localStorage.removeItem(STORAGE_KEYS.COURSES);
                 // Reset form after 2 seconds
                 setTimeout(() => {
                     setSuccess(false);
                     setFormData({
                         username: '',
                         password: '',
+                        email: '',
                         citizenId: '',
                         parentName: '',
                         parentRelation: '',
@@ -377,6 +462,7 @@ export default function CreateUser() {
                         address: '',
                         school: '',
                         educationLevel: '',
+                        studentId: '',
                     });
                     setRegisteredCourses([]);
                 }, 2000);
@@ -387,7 +473,11 @@ export default function CreateUser() {
 
         } catch (error: any) {
             console.error('Create user error:', error);
-            if (error.message.includes('USERNAME_ALREADY_EXISTS')) {
+            if (error.message.includes('STUDENT_ID_ALREADY_EXISTS')) {
+                toast.error('รหัสนักเรียนนี้มีอยู่ในระบบแล้ว');
+            } else if (error.message.includes('CITIZEN_ID_ALREADY_EXISTS')) {
+                toast.error('เลขประจำตัวประชาชนนี้มีอยู่ในระบบแล้ว');
+            } else if (error.message.includes('USERNAME_ALREADY_EXISTS')) {
                 toast.error('ชื่อผู้ใช้นี้มีอยู่ในระบบแล้ว');
             } else {
                 toast.error('เกิดข้อผิดพลาดในการสร้างผู้ใช้');
@@ -488,6 +578,39 @@ export default function CreateUser() {
         }
     };
 
+    const clearForm = () => {
+        setFormData({
+            username: '',
+            password: '',
+            email: '',
+            citizenId: '',
+            parentName: '',
+            parentRelation: '',
+            parentPhone: '',
+            parentAddress: '',
+            studentIdMap: '',
+            prefix: '',
+            firstName: '',
+            lastName: '',
+            studentName: '',
+            nickname: '',
+            birthDate: '',
+            age: '',
+            gender: '',
+            ethnicity: '',
+            religion: '',
+            studentPhone: '',
+            address: '',
+            school: '',
+            educationLevel: '',
+            studentId: '',
+        });
+        setRegisteredCourses([]);
+        localStorage.removeItem(STORAGE_KEYS.FORM);
+        localStorage.removeItem(STORAGE_KEYS.COURSES);
+        toast.success('ล้างข้อมูลทั้งหมดเรียบร้อย');
+    };
+
     if (success) {
         return (
             <div className="flex flex-col items-center justify-center py-12 space-y-6 h-full bg-white rounded-none border border-slate-200 shadow-sm">
@@ -524,7 +647,42 @@ export default function CreateUser() {
                             <p className="text-sm text-slate-500">กรอกข้อมูลเพื่อสร้างบัญชีนักเรียน</p>
                         </div>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 flex-wrap">
+                        <Button
+                            variant="outline"
+                            onClick={clearForm}
+                            className="border-red-200 text-red-500 hover:bg-red-50 rounded-none"
+                            title="ล้างข้อมูลที่กรอกทั้งหมด"
+                        >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            ล้างข้อมูล
+                        </Button>
+                        <Button
+                            variant="outline"
+                            onClick={async () => {
+                                if (!confirm('ต้องการล้างฐานข้อมูลที่ค้างอยู่ หรือไม่?')) return;
+                                try {
+                                    const token = await user?.getIdToken();
+                                    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/users/cleanup`, {
+                                        method: 'POST',
+                                        headers: { Authorization: `Bearer ${token}` }
+                                    });
+                                    if (res.ok) {
+                                        const data = await res.json();
+                                        toast.success(data.message || 'ล้างข้อมูลสำเร็จ');
+                                    } else {
+                                        toast.error('เกิดข้อผิดพลาด');
+                                    }
+                                } catch (e) {
+                                    toast.error('เกิดข้อผิดพลาดในการล้างข้อมูล');
+                                }
+                            }}
+                            className="border-amber-200 text-amber-600 hover:bg-amber-50 rounded-none"
+                            title="เคลียร์ฐานข้อมูลที่ค้าง"
+                        >
+                            <Settings className="h-4 w-4 mr-2" />
+                            เคลียร์ฐานข้อมูล
+                        </Button>
                         <Button
                             variant="outline"
                             onClick={() => setIsManageSubjectsDialogOpen(true)}
@@ -609,6 +767,39 @@ export default function CreateUser() {
                         <div className="space-y-2 col-span-1 md:col-span-2">
                             <Label className="font-semibold text-gray-700">เลขประจำตัวประชาชน</Label>
                             <Input name="citizenId" placeholder="เลขประจำตัวประชาชน 13 หลัก" value={formData.citizenId} onChange={handleChange} maxLength={13} className="h-11 rounded-none border-slate-200" />
+                        </div>
+
+                        {/* Student ID */}
+                        <div className="space-y-2">
+                            <Label className="font-semibold text-gray-700">รหัสนักเรียน (Student ID)</Label>
+                            <Input
+                                name="studentId"
+                                type="text"
+                                inputMode="numeric"
+                                placeholder="เว้นว่างให้ระบบสร้างให้อัตโนมัติ"
+                                value={formData.studentId}
+                                onChange={handleChange}
+                                className="h-11 rounded-none border-slate-200"
+                            />
+                            {lastStudentId && (
+                                <p className="text-xs text-indigo-600 mt-1 flex items-center gap-1">
+                                    <span className="inline-block w-1.5 h-1.5 rounded-full bg-indigo-500" />
+                                    รหัสนักเรียนล่าสุดในระบบ: <span className="font-bold">{lastStudentId}</span>
+                                </p>
+                            )}
+                        </div>
+
+                        {/* Email */}
+                        <div className="space-y-2">
+                            <Label className="font-semibold text-gray-700">อีเมล (Email)</Label>
+                            <Input
+                                name="email"
+                                type="email"
+                                placeholder="อีเมลของนักเรียน (ใช้เชื่อมโยงข้อมูลในระบบจัดการข้อมูลผู้ใช้)"
+                                value={formData.email}
+                                onChange={handleChange}
+                                className="h-11 rounded-none border-slate-200"
+                            />
                         </div>
 
                         {/* First Name */}
@@ -872,13 +1063,13 @@ export default function CreateUser() {
                             <DialogTitle className="flex items-center gap-2 text-yellow-600">
                                 <span className="text-xl">⚠️</span> ข้อมูลไม่ครบถ้วน
                             </DialogTitle>
-                            <DialogDescription>
+                            <div className="text-sm text-muted-foreground">
                                 คุณยังไม่ได้กรอกข้อมูลต่อไปนี้:
                                 <ul className="list-disc pl-5 mt-2 mb-2 text-slate-600">
                                     {missingFields.map((f, i) => <li key={i}>{f}</li>)}
                                 </ul>
                                 ต้องการยืนยันการสร้างบัญชีหรือไม่?
-                            </DialogDescription>
+                            </div>
                         </DialogHeader>
                         <DialogFooter className="gap-2 sm:justify-between">
                             <Button variant="outline" onClick={() => setIsConfirmDialogOpen(false)} className="rounded-none w-full">

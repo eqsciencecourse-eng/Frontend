@@ -318,7 +318,7 @@ function TeacherDashboardContent() {
     if (loading || !user) {
         return (
             <div className="flex h-screen items-center justify-center bg-slate-50">
-                <div className="h-10 w-10 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+                <div className="h-10 w-10 animate-spin rounded-none border-4 border-indigo-600 border-t-transparent" />
             </div>
         );
     }
@@ -343,7 +343,7 @@ function TeacherDashboardContent() {
                             className="space-y-8"
                         >
                             {/* [Phase 1] Dashboard Overview Stats */}
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                                 {/* Stat 1: Today's Classes */}
                                 <Card className="bg-indigo-600 text-white rounded-none border-none shadow-md overflow-hidden relative">
                                     <div className="absolute right-0 top-0 h-full w-24 bg-white/10 skew-x-12 translate-x-12" />
@@ -386,21 +386,7 @@ function TeacherDashboardContent() {
                                     </CardContent>
                                 </Card>
 
-                                {/* Stat 3: Pending Actions (Placeholder) */}
-                                <Card className="bg-white rounded-none border-slate-200 shadow-sm">
-                                    <CardContent className="p-6">
-                                        <div className="flex justify-between items-start">
-                                            <div>
-                                                <p className="text-slate-500 font-medium text-sm">รอตรวจ/ลงคะแนน</p>
-                                                <h3 className="text-4xl font-bold text-slate-800 mt-2">- <span className="text-lg font-normal text-slate-400">รายการ</span></h3>
-                                            </div>
-                                            <div className="p-2 bg-orange-50 rounded-none">
-                                                <BookOpen className="w-6 h-6 text-orange-600" />
-                                            </div>
-                                        </div>
-                                        <p className="mt-4 text-xs text-slate-400">ระบบเกรดกำลังพัฒนา...</p>
-                                    </CardContent>
-                                </Card>
+
                             </div>
 
                             <div className="border-b border-slate-200" />

@@ -1,9 +1,10 @@
 import { Button } from "@/components/ui/button";
-import { Users, FileText, Settings, ShieldCheck, UserCog, LogOut, CalendarCheck, Bell, Award, UserPlus, GraduationCap, FileSpreadsheet } from "lucide-react";
+import { Users, FileText, Settings, ShieldCheck, UserCog, LogOut, CalendarCheck, Bell, Award, UserPlus, GraduationCap, FileSpreadsheet, BarChart3 } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter, usePathname } from "next/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { canAccessAccounting } from "@/lib/admin";
 
 interface AdminSidebarProps {
     activeTab: string;
@@ -18,9 +19,12 @@ export default function AdminSidebar({ activeTab, onTabChange }: AdminSidebarPro
 
     const handleTabClick = (id: string) => {
         if (id === 'accounting') {
+            if (!canAccessAccounting(user)) return;
             router.push('/dashboard/admin/accounting');
         } else if (id === 'registry') {
             router.push('/dashboard/admin/registry');
+        } else if (id === 'manage-scores') {
+            router.push('/dashboard/admin/manage-scores');
         } else {
             // If we are NOT on the main dashboard, navigate there with the tab param
             if (pathname !== '/dashboard/admin') {
@@ -48,9 +52,17 @@ export default function AdminSidebar({ activeTab, onTabChange }: AdminSidebarPro
             ]
         },
         {
-            title: 'ระบบบัญชี',
+            title: 'ระบบจัดการคะแนน',
             items: [
+                { id: 'manage-scores', label: 'จัดการผลคะแนน', icon: BarChart3 },
+            ]
+        },
+        {
+            title: 'ระบบบัญชี',
+            items: canAccessAccounting(user) ? [
                 { id: 'accounting', label: 'จัดการบัญชี', icon: FileText },
+            ] : [
+                { id: 'accounting', label: 'จัดการบัญชี', icon: FileText, disabled: true },
             ]
         },
         {
@@ -89,7 +101,9 @@ export default function AdminSidebar({ activeTab, onTabChange }: AdminSidebarPro
                 {/* Admin Profile */}
                 <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-none border border-slate-200">
                     <Avatar className="h-10 w-10 border border-slate-200 rounded-none">
-                        <AvatarImage src={user?.photoURL || ''} className="rounded-none" />
+                        {user?.photoURL ? (
+                            <AvatarImage src={user.photoURL} className="rounded-none" />
+                        ) : null}
                         <AvatarFallback className="bg-primary/10 text-primary rounded-none">AD</AvatarFallback>
                     </Avatar>
                     <div className="overflow-hidden">
@@ -105,16 +119,22 @@ export default function AdminSidebar({ activeTab, onTabChange }: AdminSidebarPro
                     <div key={index}>
                         <p className="px-4 text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">{group.title}</p>
                         <div className="space-y-1">
-                            {group.items.map((item) => (
+                            {group.items.map((item: any) => (
                                 <Button
                                     key={item.id}
                                     variant="ghost"
                                     onClick={() => handleTabClick(item.id)}
-                                    className={`w-full justify-start gap-3 h-10 rounded-none text-slate-600 hover:text-primary hover:bg-slate-50 transition-all border border-transparent
-                                        ${activeTab === item.id ? 'bg-white text-primary font-semibold border-slate-200 shadow-sm' : ''}
-                                    `}
+                                    disabled={item.disabled}
+                                    className={`w-full justify-start gap-3 h-10 rounded-none transition-all border border-transparent
+                                        ${item.disabled
+                                            ? 'text-slate-300 cursor-not-allowed opacity-50'
+                                            : activeTab === item.id
+                                                ? 'bg-white text-primary font-semibold border-slate-200 shadow-sm'
+                                                : 'text-slate-600 hover:text-primary hover:bg-slate-50'
+                                    }`}
+                                    title={item.disabled ? 'ไม่สามารถเข้าใช้งานระบบนี้ได้' : item.label}
                                 >
-                                    <item.icon className={`h-5 w-5 ${activeTab === item.id ? 'text-primary' : 'text-slate-400'}`} />
+                                    <item.icon className={`h-5 w-5 ${item.disabled ? 'text-slate-300' : activeTab === item.id ? 'text-primary' : 'text-slate-400'}`} />
                                     {item.label}
                                 </Button>
                             ))}

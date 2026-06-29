@@ -153,7 +153,7 @@ export default function BatchAttendanceDialog({
 
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col p-0 gap-0">
+            <DialogContent className="max-w-6xl w-[95vw] max-h-[90vh] flex flex-col p-0 gap-0 rounded-none">
                 <DialogHeader className="p-6 pb-4 border-b border-slate-100">
                     <div className="flex items-center justify-between">
                         <div>
@@ -193,7 +193,7 @@ export default function BatchAttendanceDialog({
                             <span className="text-blue-600 font-bold">ลากิจ: {stats.leave}</span>
                         </div>
                         <div className="flex gap-2">
-                            <Button size="sm" variant="outline" onClick={() => markAll('present')} className="h-7 text-xs border-green-200 text-green-700 hover:bg-green-50 hover:text-green-800">เลือก "มาเรียน" ทั้งหมด</Button>
+                            <Button size="sm" variant="outline" onClick={() => markAll('present')} className="h-7 text-xs rounded-none border-green-200 text-green-700 hover:bg-green-50 hover:text-green-800">เลือก "มาเรียน" ทั้งหมด</Button>
                         </div>
                     </div>
                 </DialogHeader>
@@ -222,16 +222,16 @@ export default function BatchAttendanceDialog({
                                             </div>
                                         </td>
                                         <td className="p-4 flex justify-center">
-                                            <div className="flex items-center gap-1 bg-white border border-slate-200 p-1 rounded-full shadow-sm">
+                                            <div className="flex items-center gap-1 bg-white border border-slate-200 p-1 rounded-none shadow-sm">
                                                 {STATUS_OPTIONS.map(option => (
                                                     <button
                                                         key={option.value}
                                                         onClick={() => handleStatusChange(student._id, option.value)}
                                                         className={`
-                                                            px-3 py-1.5 rounded-full text-xs font-bold transition-all
+                                                            px-4 py-2 rounded-none text-xs font-bold transition-all border
                                                             ${state.status === option.value
-                                                                ? `${option.color.replace('text-', 'bg-').replace('600', '100')} ${option.color} ring-1 ring-inset ring-${option.color.split('-')[1]}-200`
-                                                                : 'text-slate-400 hover:bg-slate-50 hover:text-slate-600'}
+                                                                ? `${option.color.replace('text-', 'bg-').replace('600', '100')} ${option.color} border-${option.color.split('-')[1]}-200 shadow-sm transform scale-[1.02]`
+                                                                : 'text-slate-500 border-transparent hover:bg-slate-50 hover:text-slate-700 hover:border-slate-200'}
                                                         `}
                                                     >
                                                         {option.label}
@@ -254,10 +254,10 @@ export default function BatchAttendanceDialog({
                     </table>
                 </ScrollArea>
 
-                <DialogFooter className="p-4 border-t border-slate-100 bg-slate-50">
-                    <Button variant="outline" onClick={onClose} disabled={loading} className="rounded-none h-10 px-6 border-slate-300">ยกเลิก</Button>
-                    <Button onClick={handleSubmit} disabled={loading} className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-none h-10 px-8 font-bold">
-                        {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <CheckCircle2 className="w-4 h-4 mr-2" />}
+                <DialogFooter className="p-5 border-t border-slate-200 bg-slate-50 flex gap-4 justify-end">
+                    <Button variant="outline" onClick={onClose} disabled={loading} className="rounded-none h-11 px-8 border-slate-300 font-bold hover:bg-slate-100">ยกเลิก</Button>
+                    <Button onClick={handleSubmit} disabled={loading} className="bg-indigo-700 hover:bg-indigo-800 text-white rounded-none h-11 px-10 font-bold shadow-sm transition-all active:scale-95">
+                        {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <CheckCircle2 className="w-5 h-5 mr-2" />}
                         บันทึกการเช็คชื่อ
                     </Button>
                 </DialogFooter>

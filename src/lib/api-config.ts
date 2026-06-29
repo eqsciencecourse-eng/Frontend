@@ -88,10 +88,14 @@ export const API_ENDPOINTS = {
         SUMMARY: `${API_BASE}${API_PREFIX}/grades/summary/me`,
         ADD_SCORE: `${API_BASE}${API_PREFIX}/grades/add-score`,
         UPDATE_SKILL_HISTORY: `${API_BASE}${API_PREFIX}/grades/update-skill-history`,
-        UPDATE_LEVEL: `${API_BASE}${API_PREFIX}/grades/update-level`, // [NEW]
+        UPDATE_LEVEL: `${API_BASE}${API_PREFIX}/grades/update-level`,
         UPDATE_EVALUATION: `${API_BASE}${API_PREFIX}/grades/update-evaluation`,
         FINALIZE_LEVEL: `${API_BASE}${API_PREFIX}/grades/finalize-level`,
-        BATCH_SHEET: `${API_BASE}${API_PREFIX}/grades/batch-sheet`, // [NEW]
+        BATCH_SHEET: `${API_BASE}${API_PREFIX}/grades/batch-sheet`,
+        // Dynamic Grading Engine
+        STRUCTURE: `${API_BASE}${API_PREFIX}/grades/structure`,
+        GRADEBOOK: (subjectId: string) => `${API_BASE}${API_PREFIX}/grades/gradebook/${subjectId}`,
+        BULK_SCORES: `${API_BASE}${API_PREFIX}/grades/bulk-scores`,
     },
 
     // Files

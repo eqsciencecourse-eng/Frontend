@@ -43,7 +43,7 @@ export default function TeacherLoginModal({ onSuccess }: TeacherLoginModalProps)
         try {
             const result = await signInWithGoogle();
             const userEmail = result.user.email;
-            const allowedEmails = ['67319010041@technicrayong.ac.th', 'eq.science.course@gmail.com'];
+            const allowedEmails = ['67319010041@technicrayong.ac.th', 'eq.science.course@gmail.com', 'eq.science.online1@gmail.com'];
 
             if (!allowedEmails.includes(userEmail)) {
                 await logout();

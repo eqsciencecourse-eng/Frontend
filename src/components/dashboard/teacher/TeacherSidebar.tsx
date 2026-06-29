@@ -65,10 +65,12 @@ export default function TeacherSidebar({ activeTab, onTabChange }: TeacherSideba
                 </div>
 
                 {/* Teacher Profile */}
-                <div className="flex items-center gap-3 p-3 bg-slate-50 border border-slate-200">
-                    <Avatar className="h-10 w-10 border border-slate-200 rounded-none">
-                        <AvatarImage src={user?.photoURL || ''} className="rounded-none" />
-                        <AvatarFallback className="bg-primary/10 text-primary rounded-none">TC</AvatarFallback>
+                <div className="flex items-center gap-4 p-4 bg-slate-50 border border-slate-200">
+                    <Avatar className="h-12 w-12 border-2 border-white shadow-sm rounded-none">
+                        {user?.photoURL ? (
+                            <AvatarImage src={user.photoURL} className="rounded-none object-cover" />
+                        ) : null}
+                        <AvatarFallback className="bg-indigo-600 text-white rounded-none font-bold">TC</AvatarFallback>
                     </Avatar>
                     <div className="overflow-hidden">
                         <p className="text-sm font-bold text-slate-800 truncate">{user?.displayName || 'Teacher'}</p>
@@ -88,13 +90,13 @@ export default function TeacherSidebar({ activeTab, onTabChange }: TeacherSideba
                                     key={item.id}
                                     variant="ghost"
                                     onClick={() => handleTabClick(item.id)}
-                                    className={`w-full justify-start gap-3 h-10 rounded-none text-slate-600 hover:text-primary hover:bg-slate-50 transition-all border border-transparent
+                                    className={`w-full justify-start gap-4 h-12 rounded-none text-slate-600 hover:text-indigo-700 hover:bg-slate-50 transition-all border border-transparent
                                         ${activeTab === item.id || (item.id === 'attendance' && pathname === '/dashboard/teacher/attendance')
-                                            ? 'bg-white text-primary font-semibold border-slate-200 shadow-sm'
+                                            ? 'bg-white text-indigo-700 font-bold border-slate-200 shadow-sm border-l-4 border-l-indigo-600'
                                             : ''}
                                     `}
                                 >
-                                    <item.icon className={`h-5 w-5 ${activeTab === item.id || (item.id === 'attendance' && pathname === '/dashboard/teacher/attendance') ? 'text-primary' : 'text-slate-400'}`} />
+                                    <item.icon className={`h-5 w-5 ${activeTab === item.id || (item.id === 'attendance' && pathname === '/dashboard/teacher/attendance') ? 'text-indigo-600' : 'text-slate-400'}`} />
                                     {item.label}
                                 </Button>
                             ))}

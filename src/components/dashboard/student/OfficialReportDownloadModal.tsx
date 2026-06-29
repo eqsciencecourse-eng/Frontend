@@ -1,8 +1,8 @@
 import { useState, useRef } from 'react';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Download, Loader2, X } from 'lucide-react';
-import html2canvas from 'html2canvas';
+import { toJpeg } from 'html-to-image';
 
 import jsPDF from 'jspdf';
 import { format } from 'date-fns';
@@ -56,12 +56,15 @@ export default function OfficialReportDownloadModal({ isOpen, onClose, grades, s
                 return;
             }
             try {
-                // Use higher scale for better quality
-                const canvas = await html2canvas(reportRef.current, { scale: 2, useCORS: true });
-                const imgData = canvas.toDataURL('image/png');
+                const imgData = await toJpeg(reportRef.current, {
+                    quality: 1.0,
+                    pixelRatio: 2,
+                    cacheBust: true,
+                    backgroundColor: '#ffffff'
+                });
                 const pdf = new jsPDF('p', 'mm', 'a4');
                 const pdfWidth = pdf.internal.pageSize.getWidth();
-                const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+                const pdfHeight = (reportRef.current.offsetHeight * pdfWidth) / reportRef.current.offsetWidth;
 
                 pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
                 pdf.save(`Official_Report_${studentName}_${grade.subjectName}.pdf`);
@@ -115,6 +118,7 @@ export default function OfficialReportDownloadModal({ isOpen, onClose, grades, s
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
             <DialogContent className="max-w-4xl bg-white p-0 gap-0 overflow-hidden border-none shadow-2xl rounded-xl">
+                <DialogTitle className="sr-only">Official Report</DialogTitle>
                 {/* 1. Selection State */}
                 {!reportGrade && (
                     <div className="p-8">
@@ -162,7 +166,10 @@ export default function OfficialReportDownloadModal({ isOpen, onClose, grades, s
                             {/* --- HEADER (Government Style) --- */}
                             <div className="w-full flex flex-col items-center mb-6 relative">
                                 <div className="absolute left-0 top-0">
-                                    <img src="/logo.png" alt="Logo" className="h-20 object-contain" />
+                                    <img src="/logo.png" alt="Logo" className="h-20 object-contain" onError={(e) => {
+                                        (e.target as HTMLImageElement).onerror = null;
+                                        (e.target as HTMLImageElement).src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
+                                    }} />
                                 </div>
 
                                 <div className="text-center mt-2">
@@ -255,7 +262,10 @@ export default function OfficialReportDownloadModal({ isOpen, onClose, grades, s
                                             src="/director_signature.png"
                                             alt="Signature"
                                             className="absolute bottom-2 left-1/2 -translate-x-1/2 h-[70px] object-contain z-10"
-                                            onError={(e) => (e.target as HTMLImageElement).style.display = 'none'}
+                                            onError={(e) => {
+                                                (e.target as HTMLImageElement).onerror = null;
+                                                (e.target as HTMLImageElement).src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
+                                            }}
                                         />
                                         <div className="flex items-end text-lg z-0 relative">
                                             <span className="font-bold mr-2 mb-1">ลงชื่อ</span>

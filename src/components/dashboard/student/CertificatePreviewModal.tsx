@@ -1,8 +1,8 @@
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Award, Download, Loader2, X } from 'lucide-react';
 import { useRef, useState } from 'react';
-import html2canvas from 'html2canvas';
+import { toJpeg } from 'html-to-image';
 import jsPDF from 'jspdf';
 import { format } from 'date-fns';
 import { th } from 'date-fns/locale';
@@ -22,12 +22,43 @@ export default function CertificatePreviewModal({ isOpen, onClose, grade, studen
         if (!certificateRef.current) return;
         setGenerating(true);
         try {
-            const canvas = await html2canvas(certificateRef.current, {
-                scale: 3,
-                useCORS: true,
-                backgroundColor: '#ffffff'
+            const targetEl = certificateRef.current;
+            const parentEl = targetEl.parentElement;
+            let originalStyles = '';
+
+            if (parentEl) {
+                originalStyles = parentEl.style.cssText;
+                parentEl.style.position = 'fixed';
+                parentEl.style.top = '0';
+                parentEl.style.left = '0';
+                parentEl.style.opacity = '0';
+                parentEl.style.zIndex = '-9999';
+                parentEl.style.pointerEvents = 'none';
+                parentEl.style.display = 'block';
+            }
+
+            targetEl.style.display = 'block';
+            targetEl.style.width = '297mm';
+            targetEl.style.height = '210mm';
+
+            await new Promise(resolve => setTimeout(resolve, 1500));
+
+            if (targetEl.offsetWidth === 0 || targetEl.offsetHeight === 0) {
+                if (parentEl) parentEl.style.cssText = originalStyles;
+                throw new Error(`ขนาดของ Canvas ผิดปกติ (Width: ${targetEl.offsetWidth}, Height: ${targetEl.offsetHeight})`);
+            }
+
+            const imgData = await toJpeg(targetEl, {
+                quality: 1.0,
+                pixelRatio: 3,
+                backgroundColor: '#ffffff',
+                cacheBust: true,
             });
-            const imgData = canvas.toDataURL('image/jpeg', 1.0);
+
+            if (parentEl) {
+                parentEl.style.cssText = originalStyles;
+            }
+            
             const pdf = new jsPDF('l', 'mm', 'a4');
             const pdfWidth = pdf.internal.pageSize.getWidth();
             const pdfHeight = pdf.internal.pageSize.getHeight();
@@ -45,6 +76,7 @@ export default function CertificatePreviewModal({ isOpen, onClose, grade, studen
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
             <DialogContent className="max-w-5xl p-0 overflow-hidden bg-slate-900 border-none shadow-2xl">
+                <DialogTitle className="sr-only">Certificate Preview</DialogTitle>
                 <div className="relative p-6 flex flex-col items-center">
                     <div className="absolute right-4 top-4 z-50">
                         <Button variant="ghost" size="icon" onClick={onClose} className="text-white hover:bg-white/10">
@@ -59,7 +91,7 @@ export default function CertificatePreviewModal({ isOpen, onClose, grade, studen
 
                     {/* Preview Scrollable Area */}
                     <div className="w-full overflow-auto flex justify-center p-4 bg-slate-800 rounded-2xl shadow-inner mb-6">
-                         <div 
+                        <div
                             ref={certificateRef}
                             style={{
                                 width: '297mm',
@@ -85,7 +117,7 @@ export default function CertificatePreviewModal({ isOpen, onClose, grade, studen
                                 border: '3px solid #1e1b4b',
                                 borderRadius: '16px'
                             }} />
-                            
+
                             {/* Inner Border Layer 2 */}
                             <div style={{
                                 position: 'absolute', top: '12mm', bottom: '12mm', left: '12mm', right: '12mm',
@@ -96,15 +128,21 @@ export default function CertificatePreviewModal({ isOpen, onClose, grade, studen
 
                             {/* Top Watermark/Logo styling */}
                             <div style={{ zIndex: 10, textAlign: 'center', marginBottom: '20px' }}>
-                                <div style={{ width: '80px', height: '80px', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#eef2ff', borderRadius: '50%', color: '#4f46e5' }}>
-                                    <Award size={48} />
-                                </div>
+                                <img
+                                    src="/logo.png"
+                                    alt="School Logo"
+                                    style={{ width: '100px', height: '100px', margin: '0 auto', display: 'block' }}
+                                    onError={(e) => {
+                                        (e.target as HTMLImageElement).onerror = null;
+                                        (e.target as HTMLImageElement).src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
+                                    }}
+                                />
                             </div>
 
                             {/* Title */}
                             <h1 style={{ zIndex: 10, fontSize: '48px', color: '#1e1b4b', fontWeight: 800, letterSpacing: '2px', margin: '0 0 10px 0' }}> CERTIFICATE OF EXCELLENCE </h1>
                             <p style={{ zIndex: 10, fontSize: '18px', color: '#64748b', fontWeight: 'bold', letterSpacing: '1px', textTransform: 'uppercase' }}> EQ Science Learning Center </p>
-                            
+
                             {/* Awarded to */}
                             <div style={{ zIndex: 10, marginTop: '40px', marginBottom: '20px', textAlign: 'center' }}>
                                 <p style={{ fontSize: '16px', color: '#64748b', marginBottom: '10px' }}>This certificate is proudly awarded to:</p>
@@ -116,8 +154,8 @@ export default function CertificatePreviewModal({ isOpen, onClose, grade, studen
                             {/* Description */}
                             <div style={{ zIndex: 10, width: '70%', textAlign: 'center', marginBottom: '30px' }}>
                                 <p style={{ fontSize: '18px', lineHeight: '1.6', color: '#475569' }}>
-                                    for successfully completing and demonstrating exceptional skills in the course of  
-                                    <strong style={{ color: '#4338ca', fontWeight: 'bold', marginLeft: '6px' }}>{grade?.subjectName}</strong>. 
+                                    for successfully completing and demonstrating exceptional skills in the course of
+                                    <strong style={{ color: '#4338ca', fontWeight: 'bold', marginLeft: '6px' }}>{grade?.subjectName}</strong>.
                                     We commend your dedication, creativity, and commitment to learning.
                                 </p>
                             </div>
@@ -144,20 +182,21 @@ export default function CertificatePreviewModal({ isOpen, onClose, grade, studen
                                 <div style={{ textAlign: 'center' }}>
                                     <div style={{ position: 'relative', width: '200px', height: '50px', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
                                         <div style={{ borderBottom: '1px solid #1e293b', width: '200px', position: 'absolute', bottom: 0 }}></div>
-                                        <img src="/director_signature.png" style={{ height: '60px', opacity: 0.8, marginBottom: '5px', zIndex: 5, position: 'relative' }} alt="Signature" onError={(e) => (e.target as HTMLImageElement).style.display = 'none'} />
+                                        <img src="/director_signature.png" style={{ height: '60px', opacity: 0.8, marginBottom: '5px', zIndex: 5, position: 'relative' }} alt="Signature" onError={(e) => {
+                                            (e.target as HTMLImageElement).onerror = null;
+                                            (e.target as HTMLImageElement).src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
+                                        }} />
                                     </div>
                                     <span style={{ fontSize: '14px', color: '#64748b', display: 'block', marginTop: '5px' }}>Director Signature</span>
                                     <span style={{ fontSize: '12px', color: '#94a3b8' }}>( นาง ลัลน์นภัทร ทวีขจรวงศ์ )</span>
                                 </div>
                             </div>
-                            
-                            {/* Background Decorative Circles */}
-                            <div style={{ position: 'absolute', top: '-100px', left: '-100px', width: '300px', height: '300px', borderRadius: '50%', backgroundColor: 'rgba(79, 70, 229, 0.03)', pointerEvents: 'none' }} />
-                            <div style={{ position: 'absolute', bottom: '-150px', right: '-150px', width: '400px', height: '400px', borderRadius: '50%', backgroundColor: 'rgba(79, 70, 229, 0.05)', pointerEvents: 'none' }} />
+
+                            {/* Background Decorative Circles Removed to prevent html2canvas crash */}
                         </div>
                     </div>
 
-                    <Button 
+                    <Button
                         size="lg"
                         className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-full px-12 py-6 text-lg font-bold shadow-xl flex items-center gap-3 transition-transform hover:scale-105 active:scale-95 mb-4"
                         onClick={handleDownload}
@@ -169,7 +208,7 @@ export default function CertificatePreviewModal({ isOpen, onClose, grade, studen
                     <p className="text-slate-400 text-xs">ไฟล์จะถูกดาวน์โหลดในสัดส่วน A4 แนวนอนที่ความละเอียดสูงพิเศษ</p>
                 </div>
             </DialogContent>
-            
+
             {/* CSS override for scaling in preview */}
             <style jsx>{`
                 .certificate-render-target {

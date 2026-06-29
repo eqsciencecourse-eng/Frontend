@@ -464,10 +464,21 @@ export default function ManageUsers({ mode = 'manual' }: { mode?: 'manual' | 're
             const query = searchQuery.toLowerCase();
             filtered = filtered.filter(user =>
                 user.displayName?.toLowerCase().includes(query) ||
-                user.email?.toLowerCase().includes(query) ||
                 user.studentName?.toLowerCase().includes(query) ||
+                user.firstName?.toLowerCase().includes(query) ||
+                user.lastName?.toLowerCase().includes(query) ||
+                user.nickname?.toLowerCase().includes(query) ||
+                user.email?.toLowerCase().includes(query) ||
                 user.username?.toLowerCase().includes(query) ||
-                user.studentClass?.toLowerCase().includes(query)
+                user.studentClass?.toLowerCase().includes(query) ||
+                user.citizenId?.toLowerCase().includes(query) ||
+                user.studentId?.toLowerCase().includes(query) ||
+                user.studentIdMap?.toLowerCase().includes(query) ||
+                user.studentPhone?.toLowerCase().includes(query) ||
+                user.parentName?.toLowerCase().includes(query) ||
+                user.parentPhone?.toLowerCase().includes(query) ||
+                user.school?.toLowerCase().includes(query) ||
+                user.address?.toLowerCase().includes(query)
             );
         }
 
@@ -1367,6 +1378,7 @@ export default function ManageUsers({ mode = 'manual' }: { mode?: 'manual' | 're
                                         <th className="px-4 py-3">ผู้ใช้งาน</th>
                                         <th className="px-4 py-3">วิชาที่สมัคร</th>
                                         <th className="px-4 py-3">ชื่อนักเรียน</th>
+                                        <th className="px-4 py-3">อีเมล</th>
                                         <th className="px-4 py-3">ระดับการศึกษา</th>
                                         <th className="px-4 py-3">โรงเรียน</th>
                                         <th className="px-4 py-3">สถานะ</th>
@@ -1377,7 +1389,7 @@ export default function ManageUsers({ mode = 'manual' }: { mode?: 'manual' | 're
                                 <tbody className="divide-y divide-slate-100">
                                     {filteredUsers.length === 0 ? (
                                         <tr>
-                                            <td colSpan={8} className="px-4 py-8 text-center text-slate-500">
+                                            <td colSpan={10} className="px-4 py-8 text-center text-slate-500">
                                                 ไม่พบข้อมูลนักเรียน
                                             </td>
                                         </tr>
@@ -1416,6 +1428,9 @@ export default function ManageUsers({ mode = 'manual' }: { mode?: 'manual' | 're
                                                 </td>
                                                 <td className="px-4 py-3">
                                                     {user.studentName || '-'}
+                                                </td>
+                                                <td className="px-4 py-3 max-w-[180px] truncate" title={user.email}>
+                                                    {user.email && !user.email.includes('placeholder.com') && !user.email.includes('no-email') ? user.email : '-'}
                                                 </td>
                                                 <td className="px-4 py-3">
                                                     {user.educationLevel ? (EDUCATION_LEVEL_MAP[user.educationLevel] || user.educationLevel) : '-'}
@@ -1703,6 +1718,22 @@ export default function ManageUsers({ mode = 'manual' }: { mode?: 'manual' | 're
                                                             placeholder="Username"
                                                         />
                                                     ) : <div className="text-sm font-medium border-b border-dashed border-slate-200 pb-1 font-mono">{selectedUser.username || '-'}</div>}
+                                                </div>
+
+                                                {/* Email */}
+                                                <div className="space-y-1">
+                                                    <Label className="text-xs text-slate-500 uppercase font-semibold">อีเมล (Email)</Label>
+                                                    {isEditing ? (
+                                                        <Input
+                                                            value={editForm.email || ''}
+                                                            onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                                                            className="rounded-none h-9"
+                                                            placeholder="อีเมลของนักเรียน"
+                                                            type="email"
+                                                        />
+                                                    ) : <div className="text-sm font-medium border-b border-dashed border-slate-200 pb-1 truncate" title={selectedUser.email}>
+                                                        {selectedUser.email && !selectedUser.email.includes('placeholder.com') && !selectedUser.email.includes('no-email') ? selectedUser.email : '-'}
+                                                    </div>}
                                                 </div>
 
                                                 {/* Password - Only Editable in Edit Mode */}

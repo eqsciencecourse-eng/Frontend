@@ -1,20 +1,49 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import AdminSidebar from '@/components/dashboard/admin/AdminSidebar';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
-import { Loader2 } from 'lucide-react';
+import { canAccessAccounting } from '@/lib/admin';
+import { Loader2, ShieldX } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 export default function AccountingPage() {
     const [sidebarTab, setSidebarTab] = useState('accounting');
     const [isLoading, setIsLoading] = useState(true);
     const router = useRouter();
-    const { logout } = useAuth();
+    const { user } = useAuth();
+
+    const canAccess = canAccessAccounting(user);
 
     // Target URL provided by user
     const PHP_APP_URL = 'https://eq-ac.vercel.app/';
+
+    if (!canAccess) {
+        return (
+            <div className="flex h-screen bg-slate-50 overflow-hidden">
+                <AdminSidebar activeTab={sidebarTab} onTabChange={setSidebarTab} />
+                <main className="flex-1 ml-64 h-full flex items-center justify-center">
+                    <div className="text-center max-w-md p-8">
+                        <div className="h-20 w-20 mx-auto mb-6 rounded-none bg-red-50 border border-red-200 flex items-center justify-center">
+                            <ShieldX className="h-10 w-10 text-red-500" />
+                        </div>
+                        <h2 className="text-2xl font-bold text-slate-800 mb-3">ไม่สามารถเข้าใช้งานระบบนี้ได้</h2>
+                        <p className="text-slate-500 mb-6">
+                            บัญชีผู้ใช้ของคุณไม่มีสิทธิ์เข้าใช้งานระบบบัญชี กรุณาติดต่อผู้ดูแลระบบหลัก
+                        </p>
+                        <Button
+                            onClick={() => router.push('/dashboard/admin')}
+                            className="rounded-none bg-slate-800 hover:bg-slate-700 text-white"
+                        >
+                            กลับไปหน้าแรก
+                        </Button>
+                    </div>
+                </main>
+            </div>
+        );
+    }
 
     return (
         <div className="flex h-screen bg-slate-50 overflow-hidden">
