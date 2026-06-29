@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogTitle, DialogHeader, DialogDescription } f
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { API_ENDPOINTS } from '@/lib/api-config';
-import { CalendarCheck, X, Trash2, Edit2, Save, BarChart3, History, TrendingUp, CheckSquare, Monitor, Video, XSquare, FileSignature, Clock, Award, Loader2 } from 'lucide-react';
+import { CalendarCheck, X, Trash2, Edit2, Save, BarChart3, History, TrendingUp, CheckSquare, Monitor, Video, XSquare, FileSignature, Clock, Award, Loader2, Square, PenTool, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
@@ -35,6 +35,18 @@ export default function StudentDetailsDialog({ isOpen, onClose, student, subject
     const [historyLogs, setHistoryLogs] = useState<any[]>([]);
     const [isLoadingHistory, setIsLoadingHistory] = useState(false);
     const [resavingAll, setResavingAll] = useState(false);
+    const [isSelectMode, setIsSelectMode] = useState(false);
+    const [selectedDeleteIds, setSelectedDeleteIds] = useState<Set<string>>(new Set());
+
+    // [NEW] Batch Score Entry State
+    const [showBatchEntry, setShowBatchEntry] = useState(false);
+    const [batchDateIds, setBatchDateIds] = useState<Set<string>>(new Set());
+    const [batchLevel, setBatchLevel] = useState('Basic');
+    const [batchSubLevel, setBatchSubLevel] = useState('1');
+    const [batchScoresMap, setBatchScoresMap] = useState<Record<string, Record<string, number>>>({});
+    const [currentScoreDateIndex, setCurrentScoreDateIndex] = useState(0);
+    const [savingBatch, setSavingBatch] = useState(false);
+    const [showBatchScoreDialog, setShowBatchScoreDialog] = useState(false);
 
     // [NEW] Evaluation Selected Attendance Date
     const [selectedEvalRecordId, setSelectedEvalRecordId] = useState<string | null>(null);
@@ -221,6 +233,147 @@ export default function StudentDetailsDialog({ isOpen, onClose, student, subject
         } else {
             toast.warning(`บันทึกสำเร็จ ${successCount} รายการ, ล้มเหลว ${failCount} รายการ`);
         }
+        fetchEvaluationHistory();
+        if (onUpdate) onUpdate();
+    };
+
+    const toggleSelectMode = () => {
+        if (isSelectMode) {
+            setIsSelectMode(false);
+            setSelectedDeleteIds(new Set());
+        } else {
+            setIsSelectMode(true);
+        }
+    };
+
+    const toggleSelectId = (id: string) => {
+        setSelectedDeleteIds(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
+    };
+
+    const handleBatchDelete = async () => {
+        if (selectedDeleteIds.size === 0) return;
+        if (!confirm(`ยืนยันการลบผลการประเมิน ${selectedDeleteIds.size} รายการ?`)) return;
+        const token = await teacher.getIdToken();
+        let successCount = 0;
+        let failCount = 0;
+        for (const id of selectedDeleteIds) {
+            try {
+                const res = await fetch(API_ENDPOINTS.EVALUATIONS.DELETE(id), {
+                    method: 'DELETE',
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                if (res.ok) successCount++;
+                else failCount++;
+            } catch {
+                failCount++;
+            }
+        }
+        if (failCount === 0) {
+            toast.success(`ลบ ${successCount} รายการสำเร็จ`);
+        } else {
+            toast.warning(`ลบสำเร็จ ${successCount} รายการ, ล้มเหลว ${failCount} รายการ`);
+        }
+        setIsSelectMode(false);
+        setSelectedDeleteIds(new Set());
+        fetchEvaluationHistory();
+        if (onUpdate) onUpdate();
+    };
+
+    const getDefaultScores = () => ({ creativity: 0, planning: 0, problemSolving: 0, design: 0, programming: 0, focus: 0 });
+
+    const openBatchEntry = () => {
+        setShowBatchEntry(true);
+        setBatchDateIds(new Set());
+        setBatchLevel('Basic');
+        setBatchSubLevel('1');
+        setBatchScoresMap({});
+        setCurrentScoreDateIndex(0);
+    };
+
+    const toggleBatchDate = (id: string) => {
+        setBatchDateIds(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
+    };
+
+    const openBatchScoreDialog = () => {
+        if (batchDateIds.size === 0) {
+            toast.error('กรุณาเลือกวันที่ต้องการลงคะแนน');
+            return;
+        }
+        // Init scores for each selected date
+        const map: Record<string, Record<string, number>> = {};
+        for (const id of batchDateIds) {
+            map[id] = getDefaultScores();
+        }
+        setBatchScoresMap(map);
+        setCurrentScoreDateIndex(0);
+        setShowBatchScoreDialog(true);
+    };
+
+    const updateBatchScore = (dateId: string, key: string, val: number) => {
+        setBatchScoresMap(prev => ({
+            ...prev,
+            [dateId]: { ...prev[dateId], [key]: val }
+        }));
+    };
+
+    const handleSaveBatchScores = async () => {
+        setSavingBatch(true);
+        const token = await teacher.getIdToken();
+        const dateIds = Array.from(batchDateIds);
+        let successCount = 0;
+        let failCount = 0;
+
+        for (const dateId of dateIds) {
+            const record = attendanceHistory.find(r => r.id === dateId);
+            if (!record) { failCount++; continue; }
+            const scores = batchScoresMap[dateId];
+            if (!scores) { failCount++; continue; }
+
+            try {
+                const payload = {
+                    studentId: student._id || student.id,
+                    teacherId: teacher._id || teacher.id || teacher.uid,
+                    subjectId: subject?._id || subject?.id || 'general',
+                    date: new Date(record.date),
+                    level: batchLevel,
+                    subLevel: batchSubLevel,
+                    scores
+                };
+
+                const res = await fetch(API_ENDPOINTS.EVALUATIONS.CREATE, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token}`
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                if (res.ok) successCount++;
+                else failCount++;
+            } catch {
+                failCount++;
+            }
+        }
+
+        setSavingBatch(false);
+        if (failCount === 0) {
+            toast.success(`บันทึกคะแนน ${successCount} รายการสำเร็จ`);
+        } else {
+            toast.warning(`บันทึกสำเร็จ ${successCount} รายการ, ล้มเหลว ${failCount} รายการ`);
+        }
+        setShowBatchEntry(false);
+        setShowBatchScoreDialog(false);
         fetchEvaluationHistory();
         if (onUpdate) onUpdate();
     };
@@ -748,22 +901,154 @@ export default function StudentDetailsDialog({ isOpen, onClose, student, subject
                                     </div>
                                 </div>
 
-                                {/* Right Side: History Log (The Fix) */}
+                                {/* Right Side: History Log / Batch Entry */}
                                 <div className="bg-slate-50 rounded-none border border-slate-200 flex flex-col overflow-hidden h-full">
-                                    <div className="p-4 border-b bg-white flex items-center justify-between">
-                                        <h4 className="font-bold text-slate-700 flex items-center gap-2">
+                                    {showBatchEntry ? (
+                                        <>
+                                            <div className="p-4 border-b bg-white flex items-center justify-between">
+                                                <h4 className="font-bold text-slate-700 flex items-center gap-2">
+                                                    <PenTool className="w-4 h-4 text-emerald-500" />
+                                                    เลือกลงคะแนนพร้อมกัน
+                                                </h4>
+                                                <button onClick={() => setShowBatchEntry(false)} className="text-slate-400 hover:text-slate-600 transition-colors p-1" title="ปิด">
+                                                    <X className="w-4 h-4" />
+                                                </button>
+                                            </div>
+                                            <div className="flex-1 overflow-y-auto p-3 space-y-1">
+                                                {attendanceHistory.length === 0 ? (
+                                                    <div className="flex flex-col items-center justify-center h-full text-center p-6 text-slate-400 space-y-2">
+                                                        <CalendarCheck className="w-8 h-8 opacity-20" />
+                                                        <p className="text-sm">ไม่มีประวัติการเช็คชื่อ</p>
+                                                    </div>
+                                                ) : (
+                                                    attendanceHistory.map((record: any) => {
+                                                        const rid = record.id;
+                                                        const isChecked = batchDateIds.has(rid);
+                                                        return (
+                                                            <div
+                                                                key={rid}
+                                                                className={`flex items-center gap-3 p-3 border cursor-pointer transition-all ${isChecked ? 'bg-emerald-50 border-emerald-300' : 'bg-white border-slate-200 hover:border-slate-300'}`}
+                                                                onClick={() => toggleBatchDate(rid)}
+                                                            >
+                                                                <div onClick={(e) => { e.stopPropagation(); toggleBatchDate(rid); }}>
+                                                                    {isChecked
+                                                                        ? <CheckSquare className="w-5 h-5 text-emerald-600" />
+                                                                        : <Square className="w-5 h-5 text-slate-300" />}
+                                                                </div>
+                                                                <div className="flex-1 min-w-0">
+                                                                    <p className="text-sm font-bold text-slate-700">
+                                                                        {new Date(record.date).toLocaleDateString('th-TH', { year: '2-digit', month: 'long', day: 'numeric' })}
+                                                                    </p>
+                                                                    <p className="text-xs text-slate-400 flex items-center gap-1 mt-0.5">
+                                                                        <span className={`inline-block w-2 h-2 rounded-full ${record.status === 'Present' ? 'bg-green-400' : record.status === 'Late' ? 'bg-yellow-400' : record.status === 'Leave' ? 'bg-blue-400' : 'bg-red-400'}`} />
+                                                                        {record.status === 'Present' ? 'มาเรียน' : record.status === 'Late' ? 'สาย' : record.status === 'Leave' ? 'ลา' : 'ขาด'}
+                                                                        {record.classPeriod ? ` • ${record.classPeriod}` : ''}
+                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })
+                                                )}
+                                            </div>
+                                            <div className="p-4 border-t bg-white space-y-3">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="flex-1">
+                                                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">ระดับ</label>
+                                                        <select
+                                                            value={batchLevel}
+                                                            onChange={(e) => setBatchLevel(e.target.value)}
+                                                            className="w-full text-sm border border-slate-200 bg-white px-2 py-1.5 rounded-none focus:outline-none focus:ring-1 focus:ring-emerald-400"
+                                                        >
+                                                            <option value="Basic">Basic</option>
+                                                            <option value="Inter">Inter</option>
+                                                            <option value="Advance">Advance</option>
+                                                        </select>
+                                                    </div>
+                                                    <div className="w-20">
+                                                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">ระดับย่อย</label>
+                                                        <select
+                                                            value={batchSubLevel}
+                                                            onChange={(e) => setBatchSubLevel(e.target.value)}
+                                                            className="w-full text-sm border border-slate-200 bg-white px-2 py-1.5 rounded-none focus:outline-none focus:ring-1 focus:ring-emerald-400"
+                                                        >
+                                                            {[1, 2, 3, 4, 5].map(n => (
+                                                                <option key={n} value={String(n)}>{n}</option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                                <button
+                                                    onClick={openBatchScoreDialog}
+                                                    disabled={batchDateIds.size === 0}
+                                                    className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white text-base font-bold rounded-none transition-colors flex items-center justify-center gap-2"
+                                                >
+                                                    <PenTool className="w-4 h-4" />
+                                                    ยืนยัน ({batchDateIds.size} รายการ)
+                                                </button>
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <>
+                                        <div className="p-4 border-b bg-white flex items-center justify-between">
+                                            <h4 className="font-bold text-slate-700 flex items-center gap-2">
                                             <History className="w-4 h-4 text-slate-400" />
                                             ประวัติการประเมิน
                                         </h4>
                                         <div className="flex items-center gap-2">
-                                            <button
-                                                onClick={handleResaveAllScores}
-                                                disabled={resavingAll || historyLogs.length === 0}
-                                                className="text-xs font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-2.5 py-1 rounded-none transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1"
-                                            >
-                                                {resavingAll ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
-                                                บันทึกคะแนนอีกครั้ง
-                                            </button>
+                                            {isSelectMode ? (
+                                                <>
+                                                    <button
+                                                        onClick={handleBatchDelete}
+                                                        disabled={selectedDeleteIds.size === 0}
+                                                        className="text-xs font-bold text-red-600 hover:text-red-800 bg-red-50 hover:bg-red-100 border border-red-200 px-2.5 py-1 rounded-none transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1"
+                                                    >
+                                                        <Trash2 className="h-3 w-3" />
+                                                        ลบที่เลือก ({selectedDeleteIds.size})
+                                                    </button>
+                                                    <button
+                                                        onClick={toggleSelectMode}
+                                                        className="text-xs font-bold text-slate-600 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 border border-slate-200 px-2.5 py-1 rounded-none transition-colors flex items-center gap-1"
+                                                    >
+                                                        <X className="h-3 w-3" />
+                                                        ยกเลิก
+                                                    </button>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <button
+                                                        onClick={openBatchEntry}
+                                                        disabled={attendanceHistory.length === 0}
+                                                        className="relative text-xs font-bold text-emerald-600 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border-2 border-emerald-400 px-2.5 py-1 rounded-none transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 shadow-[0_0_8px_rgba(16,185,129,0.4)]"
+                                                    >
+                                                        <span className="relative z-10 flex items-center gap-1">
+                                                            <PenTool className="h-3 w-3" />
+                                                            ลงคะแนนพร้อมกัน
+                                                        </span>
+                                                        <span className="absolute inset-0 overflow-hidden pointer-events-none">
+                                                            <span className="absolute inset-0 bg-gradient-to-r from-transparent via-emerald-200/50 to-transparent animate-shimmer" />
+                                                        </span>
+                                                        <span className="absolute -top-2.5 -right-2.5 bg-gradient-to-r from-emerald-500 to-green-500 text-white text-[8px] font-bold px-1.5 py-0.5 shadow-sm leading-none z-20">
+                                                            NEW!
+                                                        </span>
+                                                    </button>
+                                                    <button
+                                                        onClick={toggleSelectMode}
+                                                        disabled={historyLogs.length === 0}
+                                                        className="text-xs font-bold text-slate-600 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 border border-slate-200 px-2.5 py-1 rounded-none transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1"
+                                                    >
+                                                        <CheckSquare className="h-3 w-3" />
+                                                        เลือก
+                                                    </button>
+                                                    <button
+                                                        onClick={handleResaveAllScores}
+                                                        disabled={resavingAll || historyLogs.length === 0}
+                                                        className="text-xs font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-2.5 py-1 rounded-none transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1"
+                                                    >
+                                                        {resavingAll ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                                                        บันทึกคะแนนอีกครั้ง
+                                                    </button>
+                                                </>
+                                            )}
                                             <span className="text-xs text-slate-400 bg-slate-100 px-2 py-1 rounded-full">{historyLogs.length} รายการ</span>
                                         </div>
                                     </div>
@@ -784,10 +1069,20 @@ export default function StudentDetailsDialog({ isOpen, onClose, student, subject
                                                     const total = Object.values(log.scores || {}).reduce((a: any, b: any) => a + b, 0) as number;
                                                     const avg = (total / 6).toFixed(1);
 
+                                                    const logId = log._id || log.id;
                                                     return (
-                                                        <div key={log._id || log.id} className="p-4 bg-white border-b border-slate-100 hover:bg-slate-50 transition-colors group">
+                                                        <div key={logId} className={`p-4 border-b border-slate-100 transition-colors group ${isSelectMode ? 'cursor-pointer hover:bg-indigo-50/30' : 'hover:bg-slate-50 bg-white'} ${selectedDeleteIds.has(logId) ? 'bg-indigo-50/50 ring-1 ring-indigo-200' : 'bg-white'}`}
+                                                            onClick={() => { if (isSelectMode) toggleSelectId(logId); }}
+                                                        >
                                                             <div className="flex justify-between items-start mb-3">
-                                                                <div>
+                                                                {isSelectMode && (
+                                                                    <div className="flex items-center mr-3 mt-0.5" onClick={(e) => { e.stopPropagation(); toggleSelectId(logId); }}>
+                                                                        {selectedDeleteIds.has(logId)
+                                                                            ? <CheckSquare className="w-5 h-5 text-indigo-600" />
+                                                                            : <Square className="w-5 h-5 text-slate-300 hover:text-slate-400" />}
+                                                                    </div>
+                                                                )}
+                                                                <div className={isSelectMode ? 'flex-1' : ''}>
                                                                     <div className="flex items-center gap-2 mb-1">
                                                                         <span className="bg-indigo-100 text-indigo-700 text-[10px] font-bold px-2 py-0.5 rounded-none border border-indigo-200">
                                                                             {log.level || 'Basic'} {log.subLevel || '1'}
@@ -839,12 +1134,149 @@ export default function StudentDetailsDialog({ isOpen, onClose, student, subject
                                             </div>
                                         )}
                                     </div>
+                                </>
+                            )}
                                 </div>
                             </div>
 
                         </div>
                     </TabsContent>
                 </Tabs>
+
+                {/* Scores Batch Entry Dialog */}
+                {showBatchScoreDialog && (
+                    <div className="fixed inset-0 z-[60] bg-black/40 flex items-center justify-center p-4" onClick={() => {}}>
+                        <div className="bg-white w-full max-w-4xl max-h-[90vh] flex flex-col shadow-xl border border-slate-200" onClick={(e) => e.stopPropagation()}>
+                            {/* Header */}
+                            <div className="flex items-center justify-between px-3 py-2 border-b bg-white">
+                                <div className="flex items-center gap-1.5">
+                                    <PenTool className="w-3.5 h-3.5 text-emerald-500" />
+                                    <h3 className="text-xs font-bold text-slate-800">ลงคะแนนพร้อมกัน</h3>
+                                </div>
+                                <button onClick={() => setShowBatchScoreDialog(false)} className="text-slate-400 hover:text-slate-600 p-0.5">
+                                    <X className="w-3.5 h-3.5" />
+                                </button>
+                            </div>
+
+                            {/* Body */}
+                            {(() => {
+                                const dateIds = Array.from(batchDateIds);
+                                const currentId = dateIds[currentScoreDateIndex];
+                                const currentRecord = attendanceHistory.find(r => r.id === currentId);
+                                const currentScores = currentId ? batchScoresMap[currentId] : null;
+
+                                if (!currentRecord || !currentScores) {
+                                    return <div className="p-8 text-center text-slate-400">ไม่พบข้อมูลวันที่</div>;
+                                }
+
+                                const skillConfig = [
+                                    { key: 'creativity', label: 'ความคิดสร้างสรรค์ (Creativity)' },
+                                    { key: 'planning', label: 'การวางแผน (Planning)' },
+                                    { key: 'problemSolving', label: 'การแก้ปัญหา (Problem Solving)' },
+                                    { key: 'design', label: 'การออกแบบ (Design)' },
+                                    { key: 'programming', label: 'การเขียนโปรแกรม (Programming)' },
+                                    { key: 'focus', label: 'ความตั้งใจ (Focus)' },
+                                ];
+
+                                const dateStr = new Date(currentRecord.date).toLocaleDateString('th-TH', { year: '2-digit', month: 'long', day: 'numeric', weekday: 'short' });
+
+                                return (
+                                    <div className="flex-1 overflow-y-auto p-2">
+                                        {/* Date indicator */}
+                                        <div className="flex items-center justify-between mb-2 pb-1.5 border-b border-slate-100">
+                                            <div className="flex items-center gap-1.5">
+                                                <CalendarCheck className="w-3.5 h-3.5 text-slate-400" />
+                                                <span className="text-xs font-bold text-slate-700">{dateStr}</span>
+                                                <span className="bg-emerald-100 text-emerald-700 text-[9px] font-bold px-1.5 py-0.5 border border-emerald-200">
+                                                    {batchLevel} {batchSubLevel}
+                                                </span>
+                                            </div>
+                                            <span className="text-[10px] text-slate-400 font-bold">
+                                                {currentScoreDateIndex + 1} / {dateIds.length}
+                                            </span>
+                                        </div>
+
+                                        {/* Score entry for each criterion */}
+                                        <div className="space-y-1.5">
+                                            {skillConfig.map(({ key, label }) => {
+                                                const score = currentScores[key] || 0;
+                                                const styles = score >= 5 ? { barBg: 'bg-emerald-500', textClass: 'text-emerald-600' } :
+                                                    score >= 4 ? { barBg: 'bg-green-500', textClass: 'text-green-600' } :
+                                                    score >= 3 ? { barBg: 'bg-indigo-500', textClass: 'text-indigo-600' } :
+                                                    score >= 2 ? { barBg: 'bg-yellow-500', textClass: 'text-yellow-600' } :
+                                                    { barBg: 'bg-red-500', textClass: 'text-red-600' };
+
+                                                return (
+                                                    <div key={key} className="p-2 border border-slate-200 bg-slate-50">
+                                                        <div className="flex justify-between items-center mb-1">
+                                                            <label className="text-[11px] font-bold text-slate-700">{label}</label>
+                                                        </div>
+                                                        <div className="flex items-center gap-1 justify-between w-full">
+                                                            {[0, 1, 2, 3, 4, 5].map((val) => (
+                                                                <button
+                                                                    key={val}
+                                                                    onClick={() => updateBatchScore(currentId, key, val)}
+                                                                    className={`flex-1 h-7 text-xs font-bold transition-all border
+                                                                        ${score === val
+                                                                            ? `${styles.barBg} text-white shadow-sm border-transparent z-10`
+                                                                            : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-100 hover:text-slate-700'}`}
+                                                                >
+                                                                    {val}
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                        <div className="flex justify-between text-[8px] text-slate-400 font-bold mt-0.5 uppercase tracking-wide">
+                                                            <span className={score <= 2 ? styles.textClass : ''}>ปรับปรุง (0-2)</span>
+                                                            <span className={score >= 3 && score <= 4 ? styles.textClass : ''}>พอใช้ (3-4)</span>
+                                                            <span className={score === 5 ? styles.textClass : ''}>ดีมาก (5)</span>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                );
+                            })()}
+
+                            {/* Footer */}
+                            <div className="px-3 py-2 border-t bg-white flex items-center justify-between">
+                                <div className="flex items-center gap-1.5">
+                                    <button
+                                        onClick={() => setCurrentScoreDateIndex(i => Math.max(0, i - 1))}
+                                        disabled={currentScoreDateIndex === 0}
+                                        className="p-1 border border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                                    >
+                                        <ChevronLeft className="w-3.5 h-3.5" />
+                                    </button>
+                                    <div className="flex items-center gap-1">
+                                        {Array.from(batchDateIds).map((_, i) => (
+                                            <button
+                                                key={i}
+                                                onClick={() => setCurrentScoreDateIndex(i)}
+                                                className={`w-2 h-2 rounded-full transition-all ${i === currentScoreDateIndex ? 'bg-emerald-500 scale-125' : 'bg-slate-300 hover:bg-slate-400'}`}
+                                            />
+                                        ))}
+                                    </div>
+                                    <button
+                                        onClick={() => setCurrentScoreDateIndex(i => Math.min(batchDateIds.size - 1, i + 1))}
+                                        disabled={currentScoreDateIndex === batchDateIds.size - 1}
+                                        className="p-1 border border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                                    >
+                                        <ChevronRight className="w-3.5 h-3.5" />
+                                    </button>
+                                </div>
+                                <button
+                                    onClick={handleSaveBatchScores}
+                                    disabled={savingBatch}
+                                    className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white text-xs font-bold rounded-none transition-colors flex items-center gap-1.5"
+                                >
+                                    {savingBatch ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                                    {savingBatch ? 'กำลังบันทึก...' : `บันทึก (${batchDateIds.size} รายการ)`}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </DialogContent>
         </Dialog>
     );
