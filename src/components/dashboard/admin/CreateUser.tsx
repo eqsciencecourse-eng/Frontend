@@ -92,6 +92,8 @@ export default function CreateUser() {
     const [success, setSuccess] = useState(false);
     const [lastStudentId, setLastStudentId] = useState<string | null>(null);
 
+    const [hasEmail, setHasEmail] = useState(false);
+
     // Form Data
     const [formData, setFormData] = useState({
         username: '',
@@ -820,14 +822,34 @@ export default function CreateUser() {
                         {/* Email */}
                         <div className="space-y-2">
                             <Label className="font-semibold text-gray-700">อีเมล (Email)</Label>
-                            <Input
-                                name="email"
-                                placeholder="example@mail.com (ไม่บังคับ)"
-                                value={formData.email}
-                                onChange={handleChange}
-                                className="h-11 rounded-none border-slate-200"
-                            />
-                            <p className="text-xs text-slate-400 mt-1">กรุณามี @ ด้วย (ไม่บังคับ ไม่ต้องใส่ก็ได้)</p>
+                            <div className="flex gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => { setHasEmail(true); }}
+                                    className={`flex-1 h-11 rounded-none text-sm font-bold border transition-all ${hasEmail ? 'bg-indigo-700 text-white border-indigo-700 shadow-sm' : 'bg-white border-slate-200 text-slate-600 hover:border-indigo-400'}`}
+                                >
+                                    มีอีเมล
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => { setHasEmail(false); setFormData(prev => ({ ...prev, email: '' })); }}
+                                    className={`flex-1 h-11 rounded-none text-sm font-bold border transition-all ${!hasEmail ? 'bg-slate-700 text-white border-slate-700 shadow-sm' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-400'}`}
+                                >
+                                    ไม่มีอีเมล
+                                </button>
+                            </div>
+                            {hasEmail && (
+                                <div className="pt-2">
+                                    <Input
+                                        name="email"
+                                        placeholder="example@mail.com"
+                                        value={formData.email}
+                                        onChange={handleChange}
+                                        className="h-11 rounded-none border-slate-200"
+                                    />
+                                    <p className="text-xs text-slate-400 mt-1">กรุณามี @ ด้วย</p>
+                                </div>
+                            )}
                         </div>
 
                         {/* First Name */}
