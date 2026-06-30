@@ -381,51 +381,42 @@ export default function AdminScoreManagement() {
     // ==================== VIEW: Teacher list (default) ====================
     return (
         <div className="space-y-6">
-            <div>
+            <div className="animate-fade-in-up">
                 <h2 className="text-2xl font-bold text-slate-800">จัดการผลคะแนน</h2>
                 <p className="text-slate-500 mt-1">
                     เลือกครูเพื่อดูรายวิชาและจัดการคะแนนนักเรียน
                 </p>
             </div>
 
-            <div className="relative">
+            <div className="relative animate-fade-in-up delay-100">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
                 <input
                     type="text"
                     placeholder="ค้นหาครู..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-12 pr-4 py-3 rounded-none border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-slate-800 placeholder:text-slate-400"
+                    className="w-full pl-12 pr-4 py-3 rounded-none border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-slate-800 placeholder:text-slate-400 transition-shadow duration-300"
                 />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Card className="bg-indigo-600 text-white rounded-none border-none shadow-sm">
-                    <CardContent className="p-5">
+            <div className="grid grid-cols-1 gap-4 animate-fade-in-up delay-100">
+                <Card className="bg-gradient-to-r from-indigo-600 to-indigo-500 text-white rounded-none border-none shadow-sm relative overflow-hidden group">
+                    <div className="absolute inset-0 bg-[linear-gradient(110deg,transparent_25%,rgba(255,255,255,0.08)_50%,transparent_75%)] bg-[length:200%_100%] animate-shimmer" />
+                    <div className="absolute -inset-1 bg-gradient-to-r from-transparent via-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+                    <CardContent className="p-5 relative z-10">
                         <div className="flex items-center justify-between">
                             <div>
                                 <p className="text-indigo-100 text-sm">ครูทั้งหมด</p>
                                 <p className="text-3xl font-bold mt-1">{teachers.length}</p>
                             </div>
-                            <GraduationCap className="h-10 w-10 text-indigo-300" />
-                        </div>
-                    </CardContent>
-                </Card>
-                <Card className="bg-white rounded-none border-slate-200 shadow-sm">
-                    <CardContent className="p-5">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-slate-500 text-sm">รายวิชาทั้งหมด</p>
-                                <p className="text-3xl font-bold text-slate-800 mt-1">{subjects.length}</p>
-                            </div>
-                            <BookOpen className="h-10 w-10 text-slate-400" />
+                            <GraduationCap className="h-10 w-10 text-indigo-300/80" />
                         </div>
                     </CardContent>
                 </Card>
             </div>
 
             <div className="space-y-3">
-                {filteredTeachers.map((teacher) => {
+                {filteredTeachers.map((teacher, index) => {
                     const tid = normalizeId(teacher._id || teacher.id);
                     const subjectList = getTeacherSubjects(teacher);
                     const totalStudents = allStudents.filter((s: any) => {
@@ -436,7 +427,7 @@ export default function AdminScoreManagement() {
 
                     return (
                         <Card key={tid}
-                            className="rounded-none border-slate-200 shadow-sm hover:shadow-md hover:border-indigo-200 transition-all cursor-pointer group"
+                            className={`rounded-none border-slate-200 shadow-sm hover:shadow-md hover:border-indigo-200 hover:scale-[1.01] transition-all duration-300 cursor-pointer group animate-fade-in-up delay-${Math.min((index % 15) * 100, 500)}`}
                             onClick={() => { setSelectedTeacher(teacher); setSelectedSubject(null); }}
                         >
                             <CardContent className="p-5">
