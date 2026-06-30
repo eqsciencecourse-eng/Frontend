@@ -54,6 +54,8 @@ export const API_ENDPOINTS = {
         DELETE: (id: string) => `${API_BASE}${API_PREFIX}/evaluations/${id}`,
         GET_STUDENT_SUMMARY: (id: string) => `${API_BASE}${API_PREFIX}/evaluations/student/${id}/summary`,
         GET_STUDENT_HISTORY: (id: string) => `${API_BASE}${API_PREFIX}/evaluations/student/${id}/history`,
+        SUBJECT_STATUS: (subjectId: string) => `${API_BASE}${API_PREFIX}/evaluations/subject/${subjectId}/status`,
+        BATCH_CREATE: `${API_BASE}${API_PREFIX}/evaluations/batch`,
     },
 
     // Courses

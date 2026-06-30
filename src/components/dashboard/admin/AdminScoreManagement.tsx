@@ -13,6 +13,7 @@ import {
 import StudentDetailsDialog from '@/components/dashboard/teacher/StudentDetailsDialog';
 import StudentEvaluationWizardDialog from '@/components/dashboard/teacher/StudentEvaluationWizardDialog';
 import CertificateManageDialog from '@/components/dashboard/admin/CertificateManageDialog';
+import AdminBatchEvaluationDialog from '@/components/dashboard/admin/AdminBatchEvaluationDialog';
 
 
 export default function AdminScoreManagement() {
@@ -44,6 +45,7 @@ export default function AdminScoreManagement() {
         subject: any;
     }>({ isOpen: false, student: null, subject: null });
 
+    const [batchEvalOpen, setBatchEvalOpen] = useState(false);
 
     const normalizeId = (id: any) => id ? String(id) : '';
 
@@ -142,7 +144,12 @@ export default function AdminScoreManagement() {
     };
 
     const getSubjectId = (subjectName: string) => {
-        return subjects.find(s => s.name === subjectName)?._id || '';
+        const found = subjects.find(s => s.name === subjectName);
+        if (!found) {
+            console.warn('Subject not found in subjects list:', subjectName);
+            return '';
+        }
+        return found._id || found.id || '';
     };
 
     if (loading) {
@@ -173,6 +180,16 @@ export default function AdminScoreManagement() {
                             {subjectInfo?.code && <> • รหัสวิชา {subjectInfo.code}</>}
                         </p>
                     </div>
+                </div>
+
+                <div className="flex justify-end mb-2">
+                    <Button
+                        size="sm"
+                        onClick={() => setBatchEvalOpen(true)}
+                        className="rounded-none bg-indigo-600 hover:bg-indigo-700 text-white text-xs h-9 gap-1.5"
+                    >
+                        <ClipboardList className="h-4 w-4" /> ลงคะแนนพร้อมกัน
+                    </Button>
                 </div>
 
                 <div className="bg-white border border-slate-200 overflow-hidden">
@@ -274,6 +291,18 @@ export default function AdminScoreManagement() {
                         subject={certDialog.subject}
                     />
                 )}
+
+                {/* Batch Evaluation Dialog */}
+                <AdminBatchEvaluationDialog
+                    isOpen={batchEvalOpen}
+                    onClose={() => setBatchEvalOpen(false)}
+                    teacher={selectedTeacher}
+                    subjectId={getSubjectId(selectedSubject)}
+                    subjectName={selectedSubject}
+                    students={enrolledStudents}
+                    adminUser={user}
+                    onUpdate={fetchData}
+                />
 
             </div>
         );

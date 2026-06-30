@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogTitle, DialogHeader, DialogDescription } f
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { API_ENDPOINTS } from '@/lib/api-config';
-import { CalendarCheck, X, Trash2, Edit2, Save, BarChart3, History, TrendingUp, CheckSquare, Monitor, Video, XSquare, FileSignature, Clock, Award, Loader2, Square, PenTool, ChevronLeft, ChevronRight, Plus } from 'lucide-react';
+import { CalendarCheck, X, Trash2, Edit2, Save, BarChart3, History, TrendingUp, CheckSquare, Monitor, Video, XSquare, FileSignature, Clock, Award, Loader2, Square, PenTool, ChevronLeft, ChevronRight, Plus, CheckCircle2 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
@@ -1052,14 +1052,19 @@ export default function StudentDetailsDialog({ isOpen, onClose, student, subject
                                                     return (
                                                         <button
                                                             key={record.id}
-                                                            onClick={() => setSelectedEvalRecordId(record.id)}
+                                                            onClick={() => { if (!hasEvaluation) setSelectedEvalRecordId(record.id); }}
+                                                            disabled={hasEvaluation}
                                                             className={`flex flex-col items-center justify-center flex-shrink-0 px-4 py-3 rounded-none border transition-all duration-200 outline-none min-w-[110px] relative
-                                                                ${isSelected
-                                                                    ? 'bg-indigo-700 border-indigo-700 shadow-md scale-[1.02] text-white'
-                                                                    : 'bg-white border-slate-300 hover:border-indigo-400 hover:bg-slate-50 opacity-90 text-slate-600'}`
+                                                                ${hasEvaluation
+                                                                    ? 'bg-slate-100 border-slate-200 opacity-50 cursor-not-allowed text-slate-400'
+                                                                    : isSelected
+                                                                        ? 'bg-indigo-700 border-indigo-700 shadow-md scale-[1.02] text-white'
+                                                                        : 'bg-white border-slate-300 hover:border-indigo-400 hover:bg-slate-50 opacity-90 text-slate-600'}`
                                                             }
                                                         >
-                                                            {!hasEvaluation && (
+                                                            {hasEvaluation ? (
+                                                                <CheckCircle2 className="absolute top-1 right-1 h-4 w-4 text-emerald-500" />
+                                                            ) : (
                                                                 <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-red-500" />
                                                             )}
                                                             <div className={`text-[10px] font-bold px-3 py-1 rounded-none border mb-2 ${statusColor.replace('text-', 'border-').replace('bg-', 'bg-')}`}>
@@ -1203,17 +1208,29 @@ export default function StudentDetailsDialog({ isOpen, onClose, student, subject
                                                 ) : (
                                                     attendanceHistory.map((record: any) => {
                                                         const rid = record.id;
+                                                        const recordDateStr = new Date(record.date).toDateString();
+                                                        const hasEvaluation = historyLogs.some(log =>
+                                                            new Date(log.date || log.createdAt).toDateString() === recordDateStr
+                                                        );
                                                         const isChecked = batchDateIds.has(rid);
                                                         return (
                                                             <div
                                                                 key={rid}
-                                                                className={`flex items-center gap-3 p-3 border cursor-pointer transition-all ${isChecked ? 'bg-emerald-50 border-emerald-300' : 'bg-white border-slate-200 hover:border-slate-300'}`}
-                                                                onClick={() => toggleBatchDate(rid)}
+                                                                className={`flex items-center gap-3 p-3 border transition-all ${hasEvaluation
+                                                                    ? 'bg-slate-50 border-slate-200 opacity-50 cursor-not-allowed'
+                                                                    : isChecked
+                                                                        ? 'bg-emerald-50 border-emerald-300 cursor-pointer'
+                                                                        : 'bg-white border-slate-200 hover:border-slate-300 cursor-pointer'}`}
+                                                                onClick={() => { if (!hasEvaluation) toggleBatchDate(rid); }}
                                                             >
-                                                                <div onClick={(e) => { e.stopPropagation(); toggleBatchDate(rid); }}>
-                                                                    {isChecked
-                                                                        ? <CheckSquare className="w-5 h-5 text-emerald-600" />
-                                                                        : <Square className="w-5 h-5 text-slate-300" />}
+                                                                <div onClick={(e) => { if (!hasEvaluation) { e.stopPropagation(); toggleBatchDate(rid); } }}>
+                                                                    {hasEvaluation ? (
+                                                                        <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+                                                                    ) : isChecked ? (
+                                                                        <CheckSquare className="w-5 h-5 text-emerald-600" />
+                                                                    ) : (
+                                                                        <Square className="w-5 h-5 text-slate-300" />
+                                                                    )}
                                                                 </div>
                                                                 <div className="flex-1 min-w-0">
                                                                     <p className="text-sm font-bold text-slate-700">
@@ -1225,6 +1242,11 @@ export default function StudentDetailsDialog({ isOpen, onClose, student, subject
                                                                         {record.classPeriod ? ` • ${record.classPeriod}` : ''}
                                                                     </p>
                                                                 </div>
+                                                                {hasEvaluation && (
+                                                                    <span className="text-[9px] text-emerald-600 font-bold px-2 py-0.5 bg-emerald-50 border border-emerald-200">
+                                                                        ประเมินแล้ว
+                                                                    </span>
+                                                                )}
                                                             </div>
                                                         );
                                                     })
