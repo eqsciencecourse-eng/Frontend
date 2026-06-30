@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogTitle, DialogHeader, DialogDescription } f
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { API_ENDPOINTS } from '@/lib/api-config';
-import { CalendarCheck, X, Trash2, Edit2, Save, BarChart3, History, TrendingUp, CheckSquare, Monitor, Video, XSquare, FileSignature, Clock, Award, Loader2, Square, PenTool, ChevronLeft, ChevronRight } from 'lucide-react';
+import { CalendarCheck, X, Trash2, Edit2, Save, BarChart3, History, TrendingUp, CheckSquare, Monitor, Video, XSquare, FileSignature, Clock, Award, Loader2, Square, PenTool, ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
@@ -48,6 +48,15 @@ export default function StudentDetailsDialog({ isOpen, onClose, student, subject
     const [savingBatch, setSavingBatch] = useState(false);
     const [showBatchScoreDialog, setShowBatchScoreDialog] = useState(false);
 
+    // Batch Check-In (multiple dates at once)
+    const [showBatchCheckIn, setShowBatchCheckIn] = useState(false);
+    const [batchDates, setBatchDates] = useState<{ id: string; date: string; status: string; remark: string }[]>([]);
+    const [savingBatchCheckIn, setSavingBatchCheckIn] = useState(false);
+
+    // Batch Delete Attendance
+    const [batchDeleteAttendanceMode, setBatchDeleteAttendanceMode] = useState(false);
+    const [selectedAttendanceIds, setSelectedAttendanceIds] = useState<Set<string>>(new Set());
+
     // [NEW] Evaluation Selected Attendance Date
     const [selectedEvalRecordId, setSelectedEvalRecordId] = useState<string | null>(null);
     const [editingEvalId, setEditingEvalId] = useState<string | null>(null);
@@ -64,6 +73,169 @@ export default function StudentDetailsDialog({ isOpen, onClose, student, subject
         classPeriod: '',
         remark: ''
     });
+
+    // Helper: แปลง YYYY-MM-DD เป็น วัน/เดือน/ปี พ.ศ.
+    const toBuddhistDate = (dateStr: string) => {
+        if (!dateStr) return { day: '', month: '', yearBE: '' };
+        const d = new Date(dateStr + 'T00:00:00');
+        return {
+            day: d.getDate().toString(),
+            month: (d.getMonth() + 1).toString(),
+            yearBE: (d.getFullYear() + 543).toString()
+        };
+    };
+
+    // Helper: แปลง วัน/เดือน/ปี พ.ศ. กลับเป็น YYYY-MM-DD
+    const fromBuddhistDate = (day: string, month: string, yearBE: string) => {
+        if (!day || !month || !yearBE) return '';
+        const y = parseInt(yearBE) - 543;
+        const m = parseInt(month).toString().padStart(2, '0');
+        const d = parseInt(day).toString().padStart(2, '0');
+        return `${y}-${m}-${d}`;
+    };
+
+    const thaiMonths = [
+        { value: '1', label: 'ม.ค.' },
+        { value: '2', label: 'ก.พ.' },
+        { value: '3', label: 'มี.ค.' },
+        { value: '4', label: 'เม.ย.' },
+        { value: '5', label: 'พ.ค.' },
+        { value: '6', label: 'มิ.ย.' },
+        { value: '7', label: 'ก.ค.' },
+        { value: '8', label: 'ส.ค.' },
+        { value: '9', label: 'ก.ย.' },
+        { value: '10', label: 'ต.ค.' },
+        { value: '11', label: 'พ.ย.' },
+        { value: '12', label: 'ธ.ค.' },
+    ];
+
+    const addBatchDate = () => {
+        if (batchDates.length >= 12) {
+            toast.error('เลือกวันที่ได้สูงสุด 12 วัน');
+            return;
+        }
+        setBatchDates(prev => [...prev, {
+            id: `batch_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+            date: new Date().toISOString().split('T')[0],
+            status: 'Present',
+            remark: ''
+        }]);
+    };
+
+    const removeBatchDate = (id: string) => {
+        setBatchDates(prev => prev.filter(d => d.id !== id));
+    };
+
+    const updateBatchDate = (id: string, field: string, value: string) => {
+        setBatchDates(prev => prev.map(d => d.id === id ? { ...d, [field]: value } : d));
+    };
+
+    const handleSaveBatchCheckIn = async () => {
+        if (batchDates.length === 0) {
+            toast.error('กรุณาเลือกวันที่อย่างน้อย 1 วัน');
+            return;
+        }
+        setSavingBatchCheckIn(true);
+        try {
+            const token = await teacher.getIdToken();
+            const subjectId = subject._id || subject.name || subject;
+            let successCount = 0;
+            let failCount = 0;
+
+            for (const entry of batchDates) {
+                const res = await fetch(API_ENDPOINTS.ATTENDANCE.CREATE, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        subjectId: subjectId,
+                        subjectName: subject.name,
+                        date: entry.date,
+                        students: [{
+                            studentId: student._id,
+                            firstName: (student.studentName || student.displayName || '').split(' ')[0] || '-',
+                            lastName: (student.studentName || student.displayName || '').split(' ').slice(1).join(' ') || '-',
+                            status: entry.status,
+                            comment: entry.remark || 'เช็กชื่อพร้อมกัน'
+                        }]
+                    })
+                });
+
+                if (res.ok) successCount++;
+                else failCount++;
+            }
+
+            if (failCount === 0) {
+                toast.success(`บันทึกการเช็กชื่อ ${successCount} วันเรียบร้อย`);
+            } else {
+                toast.warning(`บันทึกสำเร็จ ${successCount} วัน, ล้มเหลว ${failCount} วัน`);
+            }
+
+            setShowBatchCheckIn(false);
+            setBatchDates([]);
+            fetchAttendance();
+            if (onUpdate) onUpdate();
+        } catch (error) {
+            console.error('Error saving batch check-in:', error);
+            toast.error('เกิดข้อผิดพลาดในการบันทึก');
+        } finally {
+            setSavingBatchCheckIn(false);
+        }
+    };
+
+    const toggleBatchDeleteAttendance = () => {
+        if (batchDeleteAttendanceMode) {
+            setBatchDeleteAttendanceMode(false);
+            setSelectedAttendanceIds(new Set());
+        } else {
+            setBatchDeleteAttendanceMode(true);
+        }
+    };
+
+    const toggleSelectAttendance = (id: string) => {
+        setSelectedAttendanceIds(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
+    };
+
+    const handleBatchDeleteAttendance = async () => {
+        if (selectedAttendanceIds.size === 0) return;
+        if (!confirm(`ยืนยันการลบข้อมูลการเข้าเรียน ${selectedAttendanceIds.size} รายการ?`)) return;
+        const token = await teacher.getIdToken();
+        let successCount = 0;
+        let failCount = 0;
+        for (const id of selectedAttendanceIds) {
+            try {
+                const targetStudentId = student._id || student.id;
+                let url = API_ENDPOINTS.ATTENDANCE.DELETE(id);
+                if (targetStudentId) {
+                    url += `?studentId=${targetStudentId}`;
+                }
+                const res = await fetch(url, {
+                    method: 'DELETE',
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                if (res.ok) successCount++;
+                else failCount++;
+            } catch {
+                failCount++;
+            }
+        }
+        if (failCount === 0) {
+            toast.success(`ลบ ${successCount} รายการสำเร็จ`);
+        } else {
+            toast.warning(`ลบสำเร็จ ${successCount} รายการ, ล้มเหลว ${failCount} รายการ`);
+        }
+        setBatchDeleteAttendanceMode(false);
+        setSelectedAttendanceIds(new Set());
+        fetchAttendance();
+        if (onUpdate) onUpdate();
+    };
 
     useEffect(() => {
         if (isOpen && student && subject) {
@@ -579,18 +751,52 @@ export default function StudentDetailsDialog({ isOpen, onClose, student, subject
                         <div className="bg-white rounded-none shadow-sm border border-slate-200 h-full overflow-hidden flex flex-col">
                             {/* ... Attendance Input ... */}
                             <div className="p-5 mx-5 mt-5 bg-slate-50 rounded-none border border-slate-200 flex flex-col md:flex-row items-end gap-5 shadow-sm">
-                                <div className="flex flex-col gap-2 w-full md:w-[160px] flex-shrink-0 relative group">
-                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider pl-1">วันที่เรียน</label>
-                                    <div className="relative">
-                                        <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                                            <CalendarCheck className="w-4 h-4 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
-                                        </div>
-                                        <input
-                                            type="date"
-                                            value={newAttendance.date}
-                                            onChange={(e) => setNewAttendance({ ...newAttendance, date: e.target.value })}
-                                            className="border border-slate-300 rounded-none pl-[38px] pr-3 py-2 text-sm w-full outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition-all bg-white text-slate-700 font-medium h-[44px]"
-                                        />
+                                <div className="flex flex-col gap-2 w-full md:w-[280px] flex-shrink-0 relative group">
+                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider pl-1">วันที่เรียน (วัน/เดือน/ปี พ.ศ.)</label>
+                                    <div className="flex gap-1.5">
+                                        <select
+                                            value={toBuddhistDate(newAttendance.date).day}
+                                            onChange={(e) => {
+                                                const bd = toBuddhistDate(newAttendance.date);
+                                                const newDate = fromBuddhistDate(e.target.value, bd.month, bd.yearBE);
+                                                setNewAttendance({ ...newAttendance, date: newDate });
+                                            }}
+                                            className="flex-1 border border-slate-300 rounded-none px-2 py-2 text-sm outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 bg-white text-slate-700 font-medium h-[44px]"
+                                        >
+                                            <option value="">วัน</option>
+                                            {Array.from({ length: 31 }, (_, i) => (
+                                                <option key={i + 1} value={i + 1}>{i + 1}</option>
+                                            ))}
+                                        </select>
+                                        <select
+                                            value={toBuddhistDate(newAttendance.date).month}
+                                            onChange={(e) => {
+                                                const bd = toBuddhistDate(newAttendance.date);
+                                                const newDate = fromBuddhistDate(bd.day, e.target.value, bd.yearBE);
+                                                setNewAttendance({ ...newAttendance, date: newDate });
+                                            }}
+                                            className="flex-1 border border-slate-300 rounded-none px-2 py-2 text-sm outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 bg-white text-slate-700 font-medium h-[44px]"
+                                        >
+                                            <option value="">เดือน</option>
+                                            {thaiMonths.map(m => (
+                                                <option key={m.value} value={m.value}>{m.label}</option>
+                                            ))}
+                                        </select>
+                                        <select
+                                            value={toBuddhistDate(newAttendance.date).yearBE}
+                                            onChange={(e) => {
+                                                const bd = toBuddhistDate(newAttendance.date);
+                                                const newDate = fromBuddhistDate(bd.day, bd.month, e.target.value);
+                                                setNewAttendance({ ...newAttendance, date: newDate });
+                                            }}
+                                            className="flex-1 border border-slate-300 rounded-none px-2 py-2 text-sm outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 bg-white text-slate-700 font-medium h-[44px]"
+                                        >
+                                            <option value="">พ.ศ.</option>
+                                            {Array.from({ length: 7 }, (_, i) => {
+                                                const year = new Date().getFullYear() + 543 + i - 3;
+                                                return <option key={year} value={year}>{year}</option>;
+                                            })}
+                                        </select>
                                     </div>
                                 </div>
 
@@ -650,23 +856,95 @@ export default function StudentDetailsDialog({ isOpen, onClose, student, subject
                                         </Button>
                                     )}
                                 </div>
+                                <div className="flex flex-col gap-2 w-full md:w-auto flex-shrink-0 mt-2 md:mt-0">
+                                    <Button size="sm" onClick={() => { setShowBatchCheckIn(true); setBatchDates([]); }} className="h-[44px] px-4 w-full md:w-auto bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm font-bold text-sm transition-all active:scale-[0.98] rounded-none gap-1.5">
+                                        <CalendarCheck className="w-4 h-4" /> เช็กชื่อพร้อมกัน
+                                    </Button>
+                                </div>
                             </div>
 
                             <div className="flex-1 overflow-y-auto p-5">
                                 <div className="border border-slate-200 rounded-none overflow-hidden bg-white shadow-sm">
+                                    {/* Toolbar */}
+                                    {attendanceHistory.length > 0 && (
+                                        <div className="flex items-center justify-between px-6 py-3 border-b border-slate-100 bg-slate-50/50">
+                                            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                                                {attendanceHistory.length} รายการ
+                                                {batchDeleteAttendanceMode && <span className="ml-2 text-rose-500">(เลือก {selectedAttendanceIds.size} รายการ)</span>}
+                                            </span>
+                                            <div className="flex items-center gap-2">
+                                                {batchDeleteAttendanceMode ? (
+                                                    <>
+                                                        <button
+                                                            onClick={handleBatchDeleteAttendance}
+                                                            disabled={selectedAttendanceIds.size === 0}
+                                                            className="text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 disabled:bg-slate-300 disabled:cursor-not-allowed px-3 py-1.5 rounded-none transition-colors flex items-center gap-1"
+                                                        >
+                                                            <Trash2 className="h-3.5 w-3.5" />
+                                                            ลบที่เลือก ({selectedAttendanceIds.size})
+                                                        </button>
+                                                        <button
+                                                            onClick={toggleBatchDeleteAttendance}
+                                                            className="text-xs font-bold text-slate-600 bg-white hover:bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-none transition-colors"
+                                                        >
+                                                            ยกเลิก
+                                                        </button>
+                                                    </>
+                                                ) : (
+                                                    <button
+                                                        onClick={toggleBatchDeleteAttendance}
+                                                        className="text-xs font-bold text-rose-600 bg-white hover:bg-rose-50 border border-rose-200 px-3 py-1.5 rounded-none transition-colors flex items-center gap-1"
+                                                    >
+                                                        <Trash2 className="h-3.5 w-3.5" /> ลบวันที่พร้อมกัน
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
                                     <table className="w-full text-sm text-left">
                                         <thead className="text-xs text-slate-500 uppercase bg-slate-50/80 sticky top-0 backdrop-blur-sm z-10">
                                             <tr>
+                                                {batchDeleteAttendanceMode && (
+                                                    <th className="px-4 py-4 font-bold border-b border-slate-200 tracking-wider w-12">
+                                                        <button
+                                                            onClick={() => {
+                                                                if (selectedAttendanceIds.size === attendanceHistory.length) {
+                                                                    setSelectedAttendanceIds(new Set());
+                                                                } else {
+                                                                    setSelectedAttendanceIds(new Set(attendanceHistory.map(r => r.id)));
+                                                                }
+                                                            }}
+                                                            className="flex items-center justify-center w-6 h-6"
+                                                        >
+                                                            {selectedAttendanceIds.size === attendanceHistory.length
+                                                                ? <CheckSquare className="w-4 h-4 text-indigo-600" />
+                                                                : <Square className="w-4 h-4 text-slate-300" />}
+                                                        </button>
+                                                    </th>
+                                                )}
                                                 <th className="px-6 py-4 font-bold border-b border-slate-200 tracking-wider">วันที่เรียน</th>
                                                 <th className="px-6 py-4 font-bold border-b border-slate-200 tracking-wider">สถานะ</th>
                                                 <th className="px-6 py-4 font-bold border-b border-slate-200 tracking-wider">หมายเหตุ</th>
-                                                <th className="px-6 py-4 font-bold border-b border-slate-200 text-right tracking-wider w-[100px]">จัดการ</th>
+                                                {!batchDeleteAttendanceMode && (
+                                                    <th className="px-6 py-4 font-bold border-b border-slate-200 text-right tracking-wider w-[100px]">จัดการ</th>
+                                                )}
                                             </tr>
                                         </thead>
                                         <tbody>
                                             {attendanceHistory.length > 0 ? (
                                                 attendanceHistory.map((record: any) => (
-                                                    <tr key={record.id} className="bg-white border-b hover:bg-slate-50 group transition-colors">
+                                                    <tr key={record.id} className={`bg-white border-b hover:bg-slate-50 group transition-colors ${batchDeleteAttendanceMode ? 'cursor-pointer' : ''} ${selectedAttendanceIds.has(record.id) ? 'bg-rose-50/40' : ''}`}
+                                                        onClick={() => { if (batchDeleteAttendanceMode) toggleSelectAttendance(record.id); }}
+                                                    >
+                                                        {batchDeleteAttendanceMode && (
+                                                            <td className="px-4 py-4 text-center">
+                                                                <div className="flex items-center justify-center">
+                                                                    {selectedAttendanceIds.has(record.id)
+                                                                        ? <CheckSquare className="w-4 h-4 text-rose-600" />
+                                                                        : <Square className="w-4 h-4 text-slate-300" />}
+                                                                </div>
+                                                            </td>
+                                                        )}
                                                         <td className="px-6 py-4 font-medium text-slate-900">
                                                             {new Date(record.date).toLocaleDateString('th-TH')}
                                                         </td>
@@ -688,29 +966,31 @@ export default function StudentDetailsDialog({ isOpen, onClose, student, subject
                                                         <td className="px-6 py-4 text-slate-500">
                                                             {record.remark || '-'}
                                                         </td>
-                                                        <td className="px-6 py-4 text-right">
-                                                            <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                                <button
-                                                                    onClick={() => handleEditAttendance(record)}
-                                                                    className="flex items-center justify-center w-8 h-8 rounded-none border border-transparent text-blue-600 hover:bg-blue-50 hover:border-blue-200 transition-all focus:opacity-100"
-                                                                    title="แก้ไข"
-                                                                >
-                                                                    <Edit2 className="w-4 h-4" />
-                                                                </button>
-                                                                <button
-                                                                    onClick={() => handleDeleteAttendance(record.id, record.isShared)}
-                                                                    className="flex items-center justify-center w-8 h-8 rounded-none border border-transparent text-rose-600 hover:bg-rose-50 hover:border-rose-200 transition-all focus:opacity-100"
-                                                                    title="ลบ"
-                                                                >
-                                                                    <Trash2 className="w-4 h-4" />
-                                                                </button>
-                                                            </div>
-                                                        </td>
+                                                        {!batchDeleteAttendanceMode && (
+                                                            <td className="px-6 py-4 text-right">
+                                                                <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                    <button
+                                                                        onClick={() => handleEditAttendance(record)}
+                                                                        className="flex items-center justify-center w-8 h-8 rounded-none border border-transparent text-blue-600 hover:bg-blue-50 hover:border-blue-200 transition-all focus:opacity-100"
+                                                                        title="แก้ไข"
+                                                                    >
+                                                                        <Edit2 className="w-4 h-4" />
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={(e) => { e.stopPropagation(); handleDeleteAttendance(record.id, record.isShared); }}
+                                                                        className="flex items-center justify-center w-8 h-8 rounded-none border border-transparent text-rose-600 hover:bg-rose-50 hover:border-rose-200 transition-all focus:opacity-100"
+                                                                        title="ลบ"
+                                                                    >
+                                                                        <Trash2 className="w-4 h-4" />
+                                                                    </button>
+                                                                </div>
+                                                            </td>
+                                                        )}
                                                     </tr>
                                                 ))
                                             ) : (
                                                 <tr>
-                                                    <td colSpan={4} className="px-6 py-12">
+                                                    <td colSpan={batchDeleteAttendanceMode ? 5 : 4} className="px-6 py-12">
                                                         <div className="flex flex-col items-center justify-center text-slate-400 gap-3">
                                                             <div className="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center border border-slate-100">
                                                                 <CalendarCheck className="w-6 h-6 text-slate-300" />
@@ -1273,6 +1553,169 @@ export default function StudentDetailsDialog({ isOpen, onClose, student, subject
                                     {savingBatch ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
                                     {savingBatch ? 'กำลังบันทึก...' : `บันทึก (${batchDateIds.size} รายการ)`}
                                 </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Batch Check-In Dialog (เช็กชื่อพร้อมกัน หลายวัน) */}
+                {showBatchCheckIn && (
+                    <div className="fixed inset-0 z-[60] bg-black/40 flex items-center justify-center p-4" onClick={() => {}}>
+                        <div className="bg-white w-full max-w-3xl max-h-[90vh] flex flex-col shadow-xl border border-slate-200" onClick={(e) => e.stopPropagation()}>
+                            {/* Header */}
+                            <div className="flex items-center justify-between px-5 py-4 border-b bg-white">
+                                <div className="flex items-center gap-3">
+                                    <CalendarCheck className="w-5 h-5 text-emerald-600" />
+                                    <h3 className="text-base font-bold text-slate-800">เช็กชื่อพร้อมกัน ({batchDates.length}/12)</h3>
+                                </div>
+                                <button onClick={() => { setShowBatchCheckIn(false); setBatchDates([]); }} className="text-slate-400 hover:text-slate-600 p-1">
+                                    <X className="w-5 h-5" />
+                                </button>
+                            </div>
+
+                            {/* Body */}
+                            <div className="flex-1 overflow-y-auto p-5 space-y-4">
+                                <div className="flex items-center justify-between">
+                                    <p className="text-sm text-slate-500">นักเรียน: {student.displayName || student.studentName}</p>
+                                    <button
+                                        onClick={addBatchDate}
+                                        disabled={batchDates.length >= 12}
+                                        className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white text-sm font-bold rounded-none flex items-center gap-1.5 transition-colors"
+                                    >
+                                        <Plus className="w-4 h-4" /> เพิ่มวันที่
+                                    </button>
+                                </div>
+
+                                {batchDates.length === 0 ? (
+                                    <div className="text-center py-12 text-slate-400 bg-slate-50 border border-dashed border-slate-200">
+                                        <CalendarCheck className="w-10 h-10 mx-auto mb-2 opacity-30" />
+                                        <p className="font-medium">คลิก "เพิ่มวันที่" เพื่อเพิ่มวันเช็กชื่อ (สูงสุด 12 วัน)</p>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-3">
+                                        {batchDates.map((entry, idx) => {
+                                            const bd = toBuddhistDate(entry.date);
+                                            const isPresent = entry.status.toLowerCase() === 'present';
+                                            const isOnline = entry.status.toLowerCase() === 'online';
+                                            const isLeaveVideo = entry.status.toLowerCase() === 'leave_video';
+                                            const isAbsent = entry.status.toLowerCase() === 'absent';
+                                            const isLeave = entry.status.toLowerCase() === 'leave';
+                                            const isLate = entry.status.toLowerCase() === 'late';
+                                            const statusColor = isPresent ? 'text-green-700 border-green-300 bg-green-50' :
+                                                isOnline ? 'text-teal-700 border-teal-200 bg-teal-50' :
+                                                isLeaveVideo ? 'text-purple-700 border-purple-200 bg-purple-50' :
+                                                isAbsent ? 'text-red-700 border-red-200 bg-red-50' :
+                                                isLeave ? 'text-blue-700 border-blue-200 bg-blue-50' :
+                                                isLate ? 'text-amber-700 border-amber-200 bg-amber-50' :
+                                                'text-slate-700 border-slate-200 bg-slate-50';
+
+                                            return (
+                                                <div key={entry.id} className="flex flex-col md:flex-row items-start md:items-center gap-3 p-4 bg-slate-50 border border-slate-200">
+                                                    <div className="flex items-center gap-1 w-full md:w-auto">
+                                                        <span className="text-[10px] font-bold text-slate-400 bg-slate-200 px-2 py-1 mr-1">#{idx + 1}</span>
+                                                        <select
+                                                            value={bd.day}
+                                                            onChange={(e) => {
+                                                                const newDate = fromBuddhistDate(e.target.value, bd.month, bd.yearBE);
+                                                                updateBatchDate(entry.id, 'date', newDate);
+                                                            }}
+                                                            className="w-14 border border-slate-300 rounded-none px-1 py-1.5 text-xs outline-none focus:ring-1 focus:ring-indigo-500 bg-white text-slate-700 font-medium"
+                                                        >
+                                                            <option value="">วัน</option>
+                                                            {Array.from({ length: 31 }, (_, i) => (
+                                                                <option key={i + 1} value={i + 1}>{i + 1}</option>
+                                                            ))}
+                                                        </select>
+                                                        <select
+                                                            value={bd.month}
+                                                            onChange={(e) => {
+                                                                const newDate = fromBuddhistDate(bd.day, e.target.value, bd.yearBE);
+                                                                updateBatchDate(entry.id, 'date', newDate);
+                                                            }}
+                                                            className="w-16 border border-slate-300 rounded-none px-1 py-1.5 text-xs outline-none focus:ring-1 focus:ring-indigo-500 bg-white text-slate-700 font-medium"
+                                                        >
+                                                            <option value="">เดือน</option>
+                                                            {thaiMonths.map(m => (
+                                                                <option key={m.value} value={m.value}>{m.label}</option>
+                                                            ))}
+                                                        </select>
+                                                        <select
+                                                            value={bd.yearBE}
+                                                            onChange={(e) => {
+                                                                const newDate = fromBuddhistDate(bd.day, bd.month, e.target.value);
+                                                                updateBatchDate(entry.id, 'date', newDate);
+                                                            }}
+                                                            className="w-20 border border-slate-300 rounded-none px-1 py-1.5 text-xs outline-none focus:ring-1 focus:ring-indigo-500 bg-white text-slate-700 font-medium"
+                                                        >
+                                                            <option value="">พ.ศ.</option>
+                                                            {Array.from({ length: 7 }, (_, i) => {
+                                                                const year = new Date().getFullYear() + 543 + i - 3;
+                                                                return <option key={year} value={year}>{year}</option>;
+                                                            })}
+                                                        </select>
+                                                    </div>
+                                                    <div className="flex-1 w-full md:w-auto">
+                                                        <Select
+                                                            value={entry.status}
+                                                            onValueChange={(val) => updateBatchDate(entry.id, 'status', val)}
+                                                        >
+                                                            <SelectTrigger className={`rounded-none h-[34px] text-xs font-bold outline-none ring-0 focus:ring-1 focus:ring-offset-0 focus:ring-indigo-500 ${statusColor}`}>
+                                                                <SelectValue placeholder="เลือกสถานะ" />
+                                                            </SelectTrigger>
+                                                            <SelectContent className="rounded-none font-sans">
+                                                                <SelectItem value="Present" className="rounded-none font-bold text-green-700 focus:bg-green-100 focus:text-green-800"><div className="flex items-center gap-2"><CheckSquare className="w-3.5 h-3.5" /> มาเรียน</div></SelectItem>
+                                                                <SelectItem value="Online" className="rounded-none font-bold text-teal-700 focus:bg-teal-100 focus:text-teal-800"><div className="flex items-center gap-2"><Monitor className="w-3.5 h-3.5" /> เรียนออนไลน์</div></SelectItem>
+                                                                <SelectItem value="Leave_Video" className="rounded-none font-bold text-purple-700 focus:bg-purple-100 focus:text-purple-800"><div className="flex items-center gap-2"><Video className="w-3.5 h-3.5" /> ลา/ส่งวิดีโอ</div></SelectItem>
+                                                                <SelectItem value="Absent" className="rounded-none font-bold text-red-700 focus:bg-red-100 focus:text-red-800"><div className="flex items-center gap-2"><XSquare className="w-3.5 h-3.5" /> ขาดเรียน</div></SelectItem>
+                                                                <SelectItem value="Leave" className="rounded-none font-bold text-blue-700 focus:bg-blue-100 focus:text-blue-800"><div className="flex items-center gap-2"><FileSignature className="w-3.5 h-3.5" /> ลา</div></SelectItem>
+                                                                <SelectItem value="Late" className="rounded-none font-bold text-amber-700 focus:bg-amber-100 focus:text-amber-800"><div className="flex items-center gap-2"><Clock className="w-3.5 h-3.5" /> สาย</div></SelectItem>
+                                                            </SelectContent>
+                                                        </Select>
+                                                    </div>
+                                                    <div className="flex-1 w-full md:w-auto">
+                                                        <input
+                                                            type="text"
+                                                            placeholder="หมายเหตุ (ไม่บังคับ)"
+                                                            value={entry.remark}
+                                                            onChange={(e) => updateBatchDate(entry.id, 'remark', e.target.value)}
+                                                            className="w-full border border-slate-300 rounded-none px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-indigo-500 bg-white text-slate-700 h-[34px]"
+                                                        />
+                                                    </div>
+                                                    <button
+                                                        onClick={() => removeBatchDate(entry.id)}
+                                                        className="p-1.5 text-red-500 hover:bg-red-50 border border-transparent hover:border-red-200 transition-all shrink-0"
+                                                        title="ลบวันที่"
+                                                    >
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </button>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Footer */}
+                            <div className="px-5 py-4 border-t bg-white flex items-center justify-between">
+                                <p className="text-xs text-slate-400">
+                                    {batchDates.length > 0 ? `ทั้งหมด ${batchDates.length} วัน` : ''}
+                                </p>
+                                <div className="flex items-center gap-3">
+                                    <button
+                                        onClick={() => { setShowBatchCheckIn(false); setBatchDates([]); }}
+                                        className="px-5 py-2 border border-slate-300 text-slate-600 hover:bg-slate-50 text-sm font-bold rounded-none transition-colors"
+                                    >
+                                        ยกเลิก
+                                    </button>
+                                    <button
+                                        onClick={handleSaveBatchCheckIn}
+                                        disabled={savingBatchCheckIn || batchDates.length === 0}
+                                        className="px-6 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white text-sm font-bold rounded-none flex items-center gap-2 transition-colors"
+                                    >
+                                        {savingBatchCheckIn ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                                        {savingBatchCheckIn ? 'กำลังบันทึก...' : `ยืนยัน (${batchDates.length} วัน)`}
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>

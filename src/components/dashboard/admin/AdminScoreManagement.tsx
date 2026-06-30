@@ -14,6 +14,7 @@ import StudentDetailsDialog from '@/components/dashboard/teacher/StudentDetailsD
 import StudentEvaluationWizardDialog from '@/components/dashboard/teacher/StudentEvaluationWizardDialog';
 import CertificateManageDialog from '@/components/dashboard/admin/CertificateManageDialog';
 
+
 export default function AdminScoreManagement() {
     const { user } = useAuth();
     const [teachers, setTeachers] = useState<any[]>([]);
@@ -42,6 +43,7 @@ export default function AdminScoreManagement() {
         student: any;
         subject: any;
     }>({ isOpen: false, student: null, subject: null });
+
 
     const normalizeId = (id: any) => id ? String(id) : '';
 
@@ -272,6 +274,7 @@ export default function AdminScoreManagement() {
                         subject={certDialog.subject}
                     />
                 )}
+
             </div>
         );
     }
