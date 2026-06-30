@@ -205,14 +205,15 @@ export default function CreateUser() {
                     if (data?.studentId) {
                         setLastStudentId(data.studentId);
                         localStorage.setItem(STORAGE_KEYS.LAST_STUDENT_ID, data.studentId);
+                        return;
                     }
                 }
             } catch (e) {
                 console.warn('Failed to fetch last student ID from DB', e);
-                // Fallback to localStorage
-                const savedLastId = localStorage.getItem(STORAGE_KEYS.LAST_STUDENT_ID);
-                if (savedLastId) setLastStudentId(savedLastId);
             }
+            // Fallback to localStorage (also used when API returns non-ok)
+            const savedLastId = localStorage.getItem(STORAGE_KEYS.LAST_STUDENT_ID);
+            if (savedLastId) setLastStudentId(savedLastId);
         };
         fetchLastStudentId();
 
