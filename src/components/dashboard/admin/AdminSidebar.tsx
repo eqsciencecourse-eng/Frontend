@@ -1,24 +1,38 @@
 import { Button } from "@/components/ui/button";
-import { Users, FileText, Settings, ShieldCheck, UserCog, LogOut, CalendarCheck, Bell, Award, UserPlus, GraduationCap, FileSpreadsheet, BarChart3, Info, X } from "lucide-react";
+import { Users, FileText, Settings, ShieldCheck, UserCog, LogOut, CalendarCheck, Bell, Award, UserPlus, GraduationCap, FileSpreadsheet, BarChart3, Info, X, ChevronLeft, ChevronRight } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter, usePathname } from "next/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogTitle, DialogHeader } from "@/components/ui/dialog";
 import { canAccessAccounting } from "@/lib/admin";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 interface AdminSidebarProps {
     activeTab: string;
     onTabChange: (tab: string) => void;
+    isSidebarOpen: boolean;
+    onToggleSidebar: () => void;
+    teachingHighlight?: boolean;
 }
 
-export default function AdminSidebar({ activeTab, onTabChange }: AdminSidebarProps) {
+export default function AdminSidebar({ activeTab, onTabChange, isSidebarOpen, onToggleSidebar, teachingHighlight }: AdminSidebarProps) {
     const { t, setLanguage, language } = useLanguage();
     const { logout, user } = useAuth();
     const router = useRouter();
     const pathname = usePathname();
     const [showChangelog, setShowChangelog] = useState(false);
+
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Tab') {
+                e.preventDefault();
+                onToggleSidebar();
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [onToggleSidebar]);
 
     const handleTabClick = (id: string) => {
         if (id === 'accounting') {
@@ -42,8 +56,8 @@ export default function AdminSidebar({ activeTab, onTabChange }: AdminSidebarPro
         {
             title: 'ระบบนักเรียน/ผู้ใช้',
             items: [
-                { id: 'create-user', label: 'ระบบสร้างบัญชีนักเรียนใหม่', icon: UserPlus },
-                { id: 'manage-users', label: 'ระบบจัดการข้อมูลผู้ใช้', icon: Users },
+                { id: 'create-user', label: 'สร้างบัญชีผู้เรียน', icon: UserPlus },
+                { id: 'manage-users', label: 'จัดการข้อมูลผู้เรียน', icon: Users },
             ]
         },
         {
@@ -88,7 +102,24 @@ export default function AdminSidebar({ activeTab, onTabChange }: AdminSidebarPro
     };
 
     return (
-        <div className="w-64 bg-white border-r h-screen overflow-y-auto fixed left-0 top-0 flex flex-col shadow-sm z-50">
+        <div className={`${isSidebarOpen ? 'w-64' : 'w-12'} bg-white border-r h-screen overflow-y-auto fixed left-0 top-0 flex flex-col shadow-sm z-50 transition-all duration-300`}>
+            {/* Toggle Button */}
+            <div className={`flex items-center ${isSidebarOpen ? 'justify-between px-4' : 'justify-center'} h-12 bg-slate-100 border-b border-slate-200 ${teachingHighlight ? 'bg-blue-50' : ''}`}>
+                {isSidebarOpen && (
+                    <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">เมนู</span>
+                )}
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={onToggleSidebar}
+                    className={`${isSidebarOpen ? 'h-8 w-8' : 'h-10 w-10'} rounded-none text-slate-600 hover:text-primary hover:bg-slate-200 transition-all ${teachingHighlight ? 'animate-pulse ring-2 ring-blue-400 ring-offset-2 bg-blue-100 text-blue-700' : ''}`}
+                    title={isSidebarOpen ? 'ปิดแท็บเมนู' : 'เปิดแท็บเมนู'}
+                >
+                    {isSidebarOpen ? <ChevronLeft className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
+                </Button>
+            </div>
+
+            {isSidebarOpen && (<>
             {/* Header */}
             <div className="p-6 border-b border-slate-200">
                 <div className="flex items-center gap-3 mb-6">
@@ -181,6 +212,7 @@ export default function AdminSidebar({ activeTab, onTabChange }: AdminSidebarPro
                     ออกจากระบบ
                 </Button>
             </div>
+            </>)}
 
             {/* Changelog Dialog */}
             <Dialog open={showChangelog} onOpenChange={setShowChangelog}>
@@ -217,7 +249,7 @@ export default function AdminSidebar({ activeTab, onTabChange }: AdminSidebarPro
                             <ul className="space-y-1.5 list-disc pl-5">
                                 <li>ซูมหน้า Admin ออกเป็น 80% เพื่อให้เห็นทุกส่วนโดยไม่ต้องเลื่อน</li>
                                 <li>เพิ่มขอบทองและเอฟเฟกต์วิ๊งวั๊บที่เมนู "จัดการผลคะแนน" เพื่อไฮไลต์ฟีเจอร์ใหม่</li>
-                                <li>ระบบจัดการข้อมูลผู้ใช้ — ตารางกระชับขึ้น แสดงข้อมูลครบถ้วน</li>
+                                <li>จัดการข้อมูลผู้เรียน — ตารางกระชับขึ้น แสดงข้อมูลครบถ้วน</li>
                                 <li>ปุ่ม "ออกเกรด" และ "ประเมิน" ส่งข้อมูลระดับ (Level) ไปกับคำขอทุกครั้ง</li>
                             </ul>
                         </div>

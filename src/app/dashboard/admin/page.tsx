@@ -7,9 +7,10 @@ import { useRealtime } from '@/context/RealtimeContext';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogTitle, DialogHeader } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { AlertTriangle, GraduationCap } from 'lucide-react';
+import { AlertTriangle, GraduationCap, X, Info } from 'lucide-react';
 import SendFileTab from '@/components/dashboard/admin/SendFileTab';
 import UserManagement from '@/components/dashboard/admin/UserManagement';
 import AllUsersManagement from '@/components/dashboard/admin/AllUsersManagement';
@@ -35,12 +36,35 @@ function AdminDashboardContent() {
     const tabParam = searchParams.get('tab');
 
     const [activeTab, setActiveTab] = useState(tabParam || 'users');
+    const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+    const [showFirstPopup, setShowFirstPopup] = useState(false);
+    const [showTeaching, setShowTeaching] = useState(false);
 
     useEffect(() => {
         if (tabParam) {
             setActiveTab(tabParam);
         }
     }, [tabParam]);
+
+    useEffect(() => {
+        const seen = localStorage.getItem('admin-first-visit-popup');
+        if (!seen) {
+            setShowFirstPopup(true);
+        }
+    }, []);
+
+    const handleClosePopup = () => {
+        setShowFirstPopup(false);
+        localStorage.setItem('admin-first-visit-popup', 'true');
+        setShowTeaching(true);
+    };
+
+    useEffect(() => {
+        if (showTeaching) {
+            const timer = setTimeout(() => setShowTeaching(false), 6000);
+            return () => clearTimeout(timer);
+        }
+    }, [showTeaching]);
 
     // Data State
     const [users, setUsers] = useState<any[]>([]);
@@ -127,10 +151,10 @@ function AdminDashboardContent() {
     return (
         <div className="min-h-screen bg-slate-50 font-sans flex theme-square">
             {/* Sidebar Navigation */}
-            <AdminSidebar activeTab={activeTab} onTabChange={setActiveTab} />
+            <AdminSidebar activeTab={activeTab} onTabChange={setActiveTab} isSidebarOpen={isSidebarOpen} onToggleSidebar={() => { setIsSidebarOpen(prev => !prev); setShowTeaching(false); }} teachingHighlight={showTeaching} />
 
             {/* Main Content Area */}
-            <main className="flex-1 ml-[320px] p-8 transition-all duration-300 ease-in-out" style={{ zoom: '80%', transformOrigin: 'top left' }}>
+            <main className={`flex-1 ${isSidebarOpen ? 'ml-[320px]' : 'ml-16'} p-8 transition-all duration-300 ease-in-out`} style={{ zoom: '80%', transformOrigin: 'top left' }}>
                 {/* Header for current section */}
                 <div className="mb-8 flex items-center justify-between">
                     <div>
@@ -262,6 +286,42 @@ function AdminDashboardContent() {
                     </motion.div>
                 </AnimatePresence>
             </main>
+
+            {/* First Visit Popup */}
+            <Dialog open={showFirstPopup} onOpenChange={setShowFirstPopup}>
+                <DialogContent className="max-w-md p-0 overflow-hidden rounded-none" hideCloseButton>
+                    <DialogHeader className="px-6 pt-6 pb-0 shrink-0">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <Info className="w-6 h-6 text-blue-600" />
+                                <DialogTitle className="text-xl font-bold text-slate-800 m-0">อัปเดตระบบ V.2.2.0</DialogTitle>
+                            </div>
+                        </div>
+                    </DialogHeader>
+                    <div className="px-6 py-6 space-y-4 text-sm text-slate-700">
+                        <div className="bg-blue-50 border border-blue-200 p-4 space-y-2">
+                            <p className="font-bold text-blue-800 text-base">✨ เพิ่มฟีเจอร์ใหม่!</p>
+                            <p className="text-blue-700">สามารถปิดแท็บเมนูได้แล้ว! กดปุ่ม <span className="font-bold">ChevronLeft</span> ที่แถบเมนูด้านบน หรือกดปุ่ม <span className="font-bold">Tab</span> บนคีย์บอร์ดเพื่อเปิด/ปิด</p>
+                        </div>
+                        <div>
+                            <p className="font-bold text-slate-800 mb-2">🔧 ปรับปรุงระบบ</p>
+                            <ul className="space-y-1.5 list-disc pl-5">
+                                <li>แก้ไขระบบข้อมูลต่าง ๆ</li>
+                                <li>ปรับระบบฐานข้อมูลให้มีประสิทธิภาพยิ่งขึ้น</li>
+                            </ul>
+                        </div>
+                        <div className="bg-yellow-50 border border-yellow-200 p-3 text-xs text-yellow-700">
+                            <p className="font-bold">💡 คำแนะนำ:</p>
+                            <p>ระบบจะไฮไลต์ปุ่มเมนูให้ลองกดดู หลังจากปิดป๊อปอัปนี้</p>
+                        </div>
+                    </div>
+                    <div className="px-6 pb-6">
+                        <Button onClick={handleClosePopup} className="w-full rounded-none bg-blue-600 hover:bg-blue-700 text-white">
+                            รับทราบ
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

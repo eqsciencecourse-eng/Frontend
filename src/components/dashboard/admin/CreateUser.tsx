@@ -661,10 +661,10 @@ export default function CreateUser() {
                             variant="outline"
                             onClick={clearForm}
                             className="border-red-200 text-red-500 hover:bg-red-50 rounded-none"
-                            title="ล้างข้อมูลที่กรอกทั้งหมด"
+                            title="รีเซ็ตข้อมูลที่กรอกทั้งหมด"
                         >
                             <Trash2 className="h-4 w-4 mr-2" />
-                            ล้างข้อมูล
+                            รีเซ็ตข้อมูลที่กรอก
                         </Button>
                         <Button
                             variant="outline"
@@ -687,10 +687,10 @@ export default function CreateUser() {
                                 }
                             }}
                             className="border-amber-200 text-amber-600 hover:bg-amber-50 rounded-none"
-                            title="เคลียร์ฐานข้อมูลที่ค้าง"
+                            title="เคลียร์ข้อมูลในระบบป้องกัน ERROR"
                         >
                             <Settings className="h-4 w-4 mr-2" />
-                            เคลียร์ฐานข้อมูล
+                            เคลียร์ข้อมูลในระบบป้องกัน ERROR
                         </Button>
                         <Button
                             variant="outline"
