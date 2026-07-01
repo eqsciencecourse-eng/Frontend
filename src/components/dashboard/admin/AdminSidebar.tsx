@@ -77,9 +77,9 @@ export default function AdminSidebar({ activeTab, onTabChange, isSidebarOpen, on
         {
             title: 'ระบบบัญชี',
             items: canAccessAccounting(user) ? [
-                { id: 'accounting', label: 'จัดการบัญชี', icon: FileText },
+                { id: 'accounting', label: 'จัดการบัญชี', icon: FileText, neonBlue: true },
             ] : [
-                { id: 'accounting', label: 'จัดการบัญชี', icon: FileText, disabled: true },
+                { id: 'accounting', label: 'จัดการบัญชี', icon: FileText, disabled: true, neonBlue: true },
             ]
         },
         {
@@ -155,7 +155,11 @@ export default function AdminSidebar({ activeTab, onTabChange, isSidebarOpen, on
                         <div className="space-y-1">
                             {group.items.map((item: any) => {
                                 const isNew = item.newBadge;
+                                const isNeon = item.neonBlue;
                                 const goldBorder = isNew ? 'border-2 border-yellow-400 shadow-[0_0_12px_rgba(234,179,8,0.6)]' : 'border border-transparent';
+                                const goldBg = isNew ? 'bg-gradient-to-r from-yellow-50 via-amber-50 to-yellow-50' : '';
+                                const neonBorder = isNeon ? 'border-2 border-sky-400 animate-neon-blue' : '';
+                                const neonBg = isNeon ? 'bg-gradient-to-r from-sky-50 via-blue-50 to-sky-50' : '';
                                 return (
                                 <Button
                                     key={item.id}
@@ -163,7 +167,7 @@ export default function AdminSidebar({ activeTab, onTabChange, isSidebarOpen, on
                                     onClick={() => handleTabClick(item.id)}
                                     disabled={item.disabled}
                                     className={`w-full justify-start gap-3 h-10 rounded-none transition-all relative overflow-hidden
-                                        ${goldBorder}
+                                        ${goldBorder} ${goldBg} ${neonBorder} ${neonBg}
                                         ${item.disabled
                                             ? 'text-slate-300 cursor-not-allowed opacity-50'
                                             : activeTab === item.id
@@ -173,8 +177,18 @@ export default function AdminSidebar({ activeTab, onTabChange, isSidebarOpen, on
                                     title={item.disabled ? 'ไม่สามารถเข้าใช้งานระบบนี้ได้' : item.label}
                                 >
                                     {isNew && (<>
-                                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-yellow-300/40 to-transparent animate-shimmer" />
-                                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer" style={{ animationDelay: '0.8s' }} />
+                                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-yellow-300/40 to-transparent animate-shimmer-gold" />
+                                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer-gold" style={{ animationDirection: 'reverse', animationDuration: '2.4s' }} />
+                                        <div className="absolute inset-0 bg-gradient-to-b from-yellow-200/10 via-transparent to-yellow-200/10" />
+                                        <div className="absolute inset-0 animate-gold-pulse" />
+                                        <div className="absolute -top-0.5 -right-0.5 h-2 w-2 bg-yellow-300 rounded-full animate-sparkle" style={{ animationDelay: '0.2s' }} />
+                                        <div className="absolute top-1/4 -left-0.5 h-1.5 w-1.5 bg-yellow-200 rounded-full animate-sparkle" style={{ animationDelay: '0.8s' }} />
+                                        <div className="absolute bottom-1/3 right-1 h-1.5 w-1.5 bg-yellow-100 rounded-full animate-sparkle" style={{ animationDelay: '1.6s' }} />
+                                        <div className="absolute top-1/3 left-1/4 h-1 w-1 bg-amber-300 rounded-full animate-sparkle" style={{ animationDelay: '2.4s' }} />
+                                    </>)}
+                                    {isNeon && (<>
+                                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-sky-300/30 to-transparent animate-neon-sweep" />
+                                        <div className="absolute -inset-1 bg-sky-400/10 blur-sm animate-neon-pulse rounded-none" />
                                     </>)}
                                     <item.icon className={`h-5 w-5 ${item.disabled ? 'text-slate-300' : activeTab === item.id ? 'text-primary' : 'text-slate-400'}`} />
                                     {item.label}
@@ -200,7 +214,7 @@ export default function AdminSidebar({ activeTab, onTabChange, isSidebarOpen, on
                     className="w-full justify-start gap-3 h-9 rounded-none text-yellow-700 hover:bg-yellow-50 hover:text-yellow-800 text-xs"
                 >
                     <Info className="h-4 w-4" />
-                    เวอร์ชั่น V.2.1.9
+                    เวอร์ชั่น V.2.3.0
                 </Button>
 
                 <Button
@@ -220,37 +234,37 @@ export default function AdminSidebar({ activeTab, onTabChange, isSidebarOpen, on
                     <DialogHeader className="px-6 pt-6 pb-0 shrink-0">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
-                                <Info className="w-6 h-6 text-yellow-600" />
-                                <DialogTitle className="text-xl font-bold text-slate-800 m-0">อัปเดต V.2.1.9</DialogTitle>
+                                <div className="h-8 w-8 bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg">
+                                    <Info className="h-4 w-4 text-white" />
+                                </div>
+                                <DialogTitle className="text-xl font-bold text-slate-800 m-0">อัปเดต V.2.3.0</DialogTitle>
                             </div>
                             <Button variant="ghost" size="icon" onClick={() => setShowChangelog(false)}>
                                 <X className="h-5 w-5" />
                             </Button>
                         </div>
                     </DialogHeader>
-                    <div className="px-6 py-6 max-h-[70vh] overflow-y-auto space-y-4 text-sm text-slate-700">
-                        <div className="bg-gradient-to-r from-yellow-50 to-amber-50 border border-yellow-200 p-4 space-y-1">
-                            <p className="font-bold text-yellow-800 text-base">✨ อัปเดตใหม่!</p>
-                            <p className="text-yellow-700">ระบบจัดการผลคะแนน — ฟีเจอร์ใหม่ล่าสุด!</p>
-                        </div>
-
-                        <div>
-                            <p className="font-bold text-slate-800 mb-2">🐛 แก้ไขบั๊ก</p>
-                            <ul className="space-y-1.5 list-disc pl-5">
-                                <li>แก้ไขใบประกาศถูกทับเมื่อออกเกรดหลายระดับในวิชาเดียวกัน — ตอนนี้แต่ละระดับ (Basic/Inter/Advance) จะมีใบประกาศแยกกัน</li>
-                                <li>แก้ไข Dialog จัดการใบประกาศแสดงใบประกาศได้ทุกระดับ (เดิมแสดงแค่ใบแรก)</li>
-                                <li>แก้ไขตาราง Manage Users ไม่ล้นหน้าจอ — รองรับการเลื่อนแนวนอน</li>
-                                <li>แก้ไข Sidebar ขนาดไม่พอดีเมื่อ zoom 80%</li>
-                            </ul>
-                        </div>
-
-                        <div>
-                            <p className="font-bold text-slate-800 mb-2">🚀 ปรับปรุง</p>
-                            <ul className="space-y-1.5 list-disc pl-5">
-                                <li>ซูมหน้า Admin ออกเป็น 80% เพื่อให้เห็นทุกส่วนโดยไม่ต้องเลื่อน</li>
-                                <li>เพิ่มขอบทองและเอฟเฟกต์วิ๊งวั๊บที่เมนู "จัดการผลคะแนน" เพื่อไฮไลต์ฟีเจอร์ใหม่</li>
-                                <li>จัดการข้อมูลผู้เรียน — ตารางกระชับขึ้น แสดงข้อมูลครบถ้วน</li>
-                                <li>ปุ่ม "ออกเกรด" และ "ประเมิน" ส่งข้อมูลระดับ (Level) ไปกับคำขอทุกครั้ง</li>
+                    <div className="px-6 py-6 space-y-5 text-sm text-slate-700">
+                        <div className="relative bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 border border-blue-200 p-5">
+                            <p className="font-bold text-indigo-900 text-base mb-2">เพิ่มระบบกราฟแสดงผลพัฒนาการนักเรียน</p>
+                            <p className="text-indigo-700 leading-relaxed">
+                                ในขั้นตอนที่ 3 ของระบบออกเกรด (Student Evaluation Wizard) เพิ่มกราฟเส้นแสดงพัฒนาการของนักเรียนในแต่ละทักษะ (
+                                <span className="font-semibold text-indigo-800">สมาธิ, การคิด, EQ, MQ, IQ, AQ</span>
+                                ) พร้อมเส้นค่าเฉลี่ย แสดงผลเป็นเปอรเซ็นต์ในทุกคาบเรียน
+                            </p>
+                            <ul className="mt-3 space-y-1.5">
+                                <li className="flex items-start gap-2 text-indigo-600">
+                                    <span className="mt-1 h-1.5 w-1.5 rounded-full bg-indigo-400 shrink-0" />
+                                    <span>แสดงข้อมูลตั้งแต่วันแรกถึงปัจจุบันตามวันที่ในระบบ</span>
+                                </li>
+                                <li className="flex items-start gap-2 text-indigo-600">
+                                    <span className="mt-1 h-1.5 w-1.5 rounded-full bg-indigo-400 shrink-0" />
+                                    <span>ระบบ Hover แสดงคะแนนรายครั้งแบบละเอียด</span>
+                                </li>
+                                <li className="flex items-start gap-2 text-indigo-600">
+                                    <span className="mt-1 h-1.5 w-1.5 rounded-full bg-indigo-400 shrink-0" />
+                                    <span>ปุ่มบันทึก PDF รายงานผลพัฒนาการภาษาไทย</span>
+                                </li>
                             </ul>
                         </div>
 

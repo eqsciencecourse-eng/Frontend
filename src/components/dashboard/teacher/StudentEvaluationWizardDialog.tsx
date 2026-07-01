@@ -4,7 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { Calculator, Award, CalendarCheck, Settings2, Download, LayoutTemplate, X, ChevronRight, Loader2, Image as ImageIcon, Mail, Send, FileText, ArrowLeft, Upload } from "lucide-react";
+import { Calculator, Award, CalendarCheck, Settings2, Download, LayoutTemplate, X, ChevronRight, Loader2, Image as ImageIcon, Mail, Send, FileText, ArrowLeft, Upload, BarChart3 } from "lucide-react";
+import EvolutionChart from './EvolutionChart';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { API_ENDPOINTS, buildApiUrl } from '@/lib/api-config';
@@ -775,38 +776,60 @@ export default function StudentEvaluationWizardDialog({ isOpen, onClose, student
                             </div>
                         )}
 
-                        {/* Step 3 Content */}
+                        {/* Step 3 Content - Statistics Review with Chart */}
                         {step === 3 && (
                             <div className="flex-1 flex flex-col p-6 overflow-hidden">
                                 <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2 mb-6">
-                                    <Calculator className="w-5 h-5 text-indigo-500" />
-                                    สรุปผลและการติดสินใจ (Manual Adjustment)
+                                    <BarChart3 className="w-5 h-5 text-indigo-500" />
+                                    ตรวจสอบสถิติและพัฒนาการ
                                 </h3>
 
-                                <div className="space-y-6 flex-1 overflow-y-auto overflow-x-hidden pr-2 flex items-center justify-center">
-                                    <Card className="w-full max-w-lg p-8 border border-emerald-200 bg-emerald-50 rounded-none shadow-sm flex flex-col justify-center mx-auto">
-                                        <h4 className="text-lg font-bold text-emerald-800 mb-4 flex items-center gap-2">
-                                            <Calculator className="w-5 h-5" />
-                                            สถิติการเรียน (Study Stats)
-                                        </h4>
-                                        <div className="flex flex-col gap-4 mt-2">
-                                            <div className="flex justify-between items-center border-b border-emerald-200/50 pb-3">
-                                                <span className="text-emerald-700">จำนวนคาบเรียนที่เลือก:</span>
-                                                <span className="font-bold text-emerald-900 text-lg">{selectedSessions.length} คาบ</span>
+                                <div className="flex-1 overflow-y-auto overflow-x-hidden pr-2 space-y-5">
+                                    {/* Stats Cards Row */}
+                                    <div className="grid grid-cols-3 gap-4">
+                                        <Card className="p-5 border border-slate-200 bg-white rounded-none shadow-sm">
+                                            <div className="flex items-center justify-between">
+                                                <div>
+                                                    <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">จำนวนคาบ</p>
+                                                    <p className="text-3xl font-bold text-indigo-700 mt-1">{selectedSessions.length}</p>
+                                                </div>
+                                                <CalendarCheck className="h-8 w-8 text-indigo-200" />
                                             </div>
-                                            <div className="flex justify-between items-center border-b border-emerald-200/50 pb-3">
-                                                <span className="text-emerald-700">รวมชั่วโมงเรียน (คาบละ 2 ชม.):</span>
-                                                <span className="font-bold text-emerald-900 text-lg">{selectedSessions.length * 2} ชั่วโมง</span>
+                                        </Card>
+                                        <Card className="p-5 border border-slate-200 bg-white rounded-none shadow-sm">
+                                            <div className="flex items-center justify-between">
+                                                <div>
+                                                    <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">รวมชั่วโมงเรียน</p>
+                                                    <p className="text-3xl font-bold text-indigo-700 mt-1">{selectedSessions.length * 2}</p>
+                                                </div>
+                                                <Calculator className="h-8 w-8 text-indigo-200" />
                                             </div>
-                                            <div className="flex justify-between items-center pb-1">
-                                                <span className="text-emerald-700">คะแนนเฉลี่ยรวม (ร้อยละ):</span>
-                                                <span className="font-bold text-emerald-900 text-xl">
-                                                    {((guidanceStats.avg / 5) * 100).toFixed(1)}% 
-                                                    <span className="text-sm font-normal ml-1">({guidanceStats.avg.toFixed(2)}/5)</span>
-                                                </span>
+                                        </Card>
+                                        <Card className="p-5 border border-emerald-200 bg-emerald-50 rounded-none shadow-sm">
+                                            <div className="flex items-center justify-between">
+                                                <div>
+                                                    <p className="text-xs font-bold text-emerald-600 uppercase tracking-wider">คะแนนเฉลี่ย</p>
+                                                    <p className="text-3xl font-bold text-emerald-800 mt-1">
+                                                        {((guidanceStats.avg / 5) * 100).toFixed(1)}%
+                                                    </p>
+                                                </div>
+                                                <Award className="h-8 w-8 text-emerald-200" />
                                             </div>
-                                        </div>
-                                    </Card>
+                                            <p className="text-xs text-emerald-600 mt-2 font-medium">
+                                                {guidanceStats.avg.toFixed(2)}/5 • ระดับ {selectedLevel} {selectedSubLevel}
+                                            </p>
+                                        </Card>
+                                    </div>
+
+                                    <EvolutionChart
+                                        evaluationLogs={evaluationLogs}
+                                        selectedSessions={selectedSessions}
+                                        attendanceHistory={attendanceHistory}
+                                        studentName={studentName}
+                                        subjectName={subject?.name}
+                                        level={selectedLevel}
+                                        subLevel={selectedSubLevel}
+                                    />
                                 </div>
 
                                 <div className="mt-6 flex justify-between items-center bg-slate-50 p-5 border border-slate-200 shadow-sm">

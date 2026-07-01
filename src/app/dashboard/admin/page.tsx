@@ -37,7 +37,8 @@ function AdminDashboardContent() {
 
     const [activeTab, setActiveTab] = useState(tabParam || 'users');
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-    const [showFirstPopup, setShowFirstPopup] = useState(false);
+    const [showUpdatePopup, setShowUpdatePopup] = useState(false);
+    const [dontShowAgain, setDontShowAgain] = useState(false);
     const [showTeaching, setShowTeaching] = useState(false);
 
     useEffect(() => {
@@ -47,15 +48,20 @@ function AdminDashboardContent() {
     }, [tabParam]);
 
     useEffect(() => {
-        const seen = localStorage.getItem('admin-first-visit-popup');
+        const optout = localStorage.getItem('admin-popup-optout');
+        if (optout) return;
+        const seen = localStorage.getItem('admin-update-v230-popup');
         if (!seen) {
-            setShowFirstPopup(true);
+            setShowUpdatePopup(true);
         }
     }, []);
 
     const handleClosePopup = () => {
-        setShowFirstPopup(false);
-        localStorage.setItem('admin-first-visit-popup', 'true');
+        setShowUpdatePopup(false);
+        localStorage.setItem('admin-update-v230-popup', 'true');
+        if (dontShowAgain) {
+            localStorage.setItem('admin-popup-optout', 'true');
+        }
         setShowTeaching(true);
     };
 
@@ -287,36 +293,62 @@ function AdminDashboardContent() {
                 </AnimatePresence>
             </main>
 
-            {/* First Visit Popup */}
-            <Dialog open={showFirstPopup} onOpenChange={setShowFirstPopup}>
-                <DialogContent className="max-w-md p-0 overflow-hidden rounded-none" hideCloseButton>
+            {/* Update Popup */}
+            <Dialog open={showUpdatePopup} onOpenChange={setShowUpdatePopup}>
+                <DialogContent className="max-w-lg p-0 overflow-hidden rounded-none border border-slate-200 shadow-xl" hideCloseButton>
                     <DialogHeader className="px-6 pt-6 pb-0 shrink-0">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
-                                <Info className="w-6 h-6 text-blue-600" />
-                                <DialogTitle className="text-xl font-bold text-slate-800 m-0">อัปเดตระบบ V.2.2.0</DialogTitle>
+                                <div className="h-8 w-8 bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg">
+                                    <Info className="h-4 w-4 text-white" />
+                                </div>
+                                <DialogTitle className="text-xl font-bold text-slate-800 m-0">อัปเดตระบบ V.2.3.0</DialogTitle>
                             </div>
                         </div>
                     </DialogHeader>
-                    <div className="px-6 py-6 space-y-4 text-sm text-slate-700">
-                        <div className="bg-blue-50 border border-blue-200 p-4 space-y-2">
-                            <p className="font-bold text-blue-800 text-base">✨ เพิ่มฟีเจอร์ใหม่!</p>
-                            <p className="text-blue-700">สามารถปิดแท็บเมนูได้แล้ว! กดปุ่ม <span className="font-bold">ChevronLeft</span> ที่แถบเมนูด้านบน หรือกดปุ่ม <span className="font-bold">Tab</span> บนคีย์บอร์ดเพื่อเปิด/ปิด</p>
+                    <div className="px-6 py-6 space-y-5 text-sm text-slate-700">
+                            <div className="animate-slide-reveal">
+                                <div className="relative bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 border border-blue-200 p-5">
+                                    <div className="relative">
+                                    <p className="font-bold text-indigo-900 text-base mb-2">เพิ่มระบบกราฟแสดงผลพัฒนาการนักเรียน</p>
+                                    <p className="text-indigo-700 leading-relaxed">
+                                        ในขั้นตอนที่ 3 ของระบบออกเกรด (Student Evaluation Wizard) เพิ่มกราฟเส้นแสดงพัฒนาการของนักเรียนในแต่ละทักษะ (
+                                        <span className="font-semibold text-indigo-800">สมาธิ, การคิด, EQ, MQ, IQ, AQ</span>
+                                        ) พร้อมเส้นค่าเฉลี่ย แสดงผลเป็นเปอรเซ็นต์ในทุกคาบเรียน
+                                    </p>
+                                    <ul className="mt-3 space-y-1.5">
+                                        <li className="flex items-start gap-2 text-indigo-600">
+                                            <span className="mt-1 h-1.5 w-1.5 rounded-full bg-indigo-400 shrink-0" />
+                                            <span>แสดงข้อมูลตั้งแต่วันแรกถึงปัจจุบันตามวันที่ในระบบ</span>
+                                        </li>
+                                        <li className="flex items-start gap-2 text-indigo-600">
+                                            <span className="mt-1 h-1.5 w-1.5 rounded-full bg-indigo-400 shrink-0" />
+                                            <span>ระบบ Hover แสดงคะแนนรายครั้งแบบละเอียด</span>
+                                        </li>
+                                        <li className="flex items-start gap-2 text-indigo-600">
+                                            <span className="mt-1 h-1.5 w-1.5 rounded-full bg-indigo-400 shrink-0" />
+                                            <span>ปุ่มบันทึก PDF รายงานผลพัฒนาการภาษาไทย</span>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
                         </div>
-                        <div>
-                            <p className="font-bold text-slate-800 mb-2">🔧 ปรับปรุงระบบ</p>
-                            <ul className="space-y-1.5 list-disc pl-5">
-                                <li>แก้ไขระบบข้อมูลต่าง ๆ</li>
-                                <li>ปรับระบบฐานข้อมูลให้มีประสิทธิภาพยิ่งขึ้น</li>
-                            </ul>
-                        </div>
-                        <div className="bg-yellow-50 border border-yellow-200 p-3 text-xs text-yellow-700">
-                            <p className="font-bold">💡 คำแนะนำ:</p>
-                            <p>ระบบจะไฮไลต์ปุ่มเมนูให้ลองกดดู หลังจากปิดป๊อปอัปนี้</p>
+
+                        <div className="animate-slide-reveal delay-100 flex items-center gap-3 bg-slate-50 border border-slate-200 p-3">
+                            <input
+                                type="checkbox"
+                                id="dontShowAgain"
+                                checked={dontShowAgain}
+                                onChange={(e) => setDontShowAgain(e.target.checked)}
+                                className="h-4 w-4 rounded-none border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                            />
+                            <label htmlFor="dontShowAgain" className="text-xs text-slate-500 cursor-pointer select-none">
+                                ไมต้องการเห็นข้อความนี้อีก
+                            </label>
                         </div>
                     </div>
                     <div className="px-6 pb-6">
-                        <Button onClick={handleClosePopup} className="w-full rounded-none bg-blue-600 hover:bg-blue-700 text-white">
+                        <Button onClick={handleClosePopup} className="w-full rounded-none bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-md">
                             รับทราบ
                         </Button>
                     </div>

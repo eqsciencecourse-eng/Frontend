@@ -129,6 +129,33 @@
   100% { background-position: -200% 0; }
 }
 
+@keyframes shimmerGold {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@keyframes goldPulse {
+  0%, 100% { box-shadow: 0 0 8px rgba(234,179,8,0.4), inset 0 0 8px rgba(234,179,8,0.1); }
+  50% { box-shadow: 0 0 20px rgba(234,179,8,0.7), inset 0 0 16px rgba(234,179,8,0.2); }
+}
+
+@keyframes sparkle {
+  0%, 100% { opacity: 0; transform: scale(0) rotate(0deg); }
+  25% { opacity: 1; transform: scale(1) rotate(180deg); }
+  50% { opacity: 0; transform: scale(0.5) rotate(360deg); }
+  75% { opacity: 1; transform: scale(0.8) rotate(540deg); }
+}
+
+@keyframes neonPulse {
+  0%, 100% { opacity: 0.3; box-shadow: 0 0 5px rgba(56,189,248,0.3), 0 0 10px rgba(56,189,248,0.1); }
+  50% { opacity: 0.8; box-shadow: 0 0 15px rgba(56,189,248,0.6), 0 0 30px rgba(56,189,248,0.3), 0 0 45px rgba(56,189,248,0.1); }
+}
+
+@keyframes neonSweep {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
 @keyframes fadeInUp {
   from { opacity: 0; transform: translateY(20px); }
   to { opacity: 1; transform: translateY(0); }
@@ -136,6 +163,30 @@
 
 .animate-shimmer {
   animation: shimmer 3s ease-in-out infinite;
+}
+
+.animate-shimmer-gold {
+  animation: shimmerGold 1.8s linear infinite;
+}
+
+.animate-gold-pulse {
+  animation: goldPulse 2s ease-in-out infinite;
+}
+
+.animate-sparkle {
+  animation: sparkle 3s ease-in-out infinite;
+}
+
+.animate-neon-pulse {
+  animation: neonPulse 2s ease-in-out infinite;
+}
+
+.animate-neon-sweep {
+  animation: neonSweep 2.5s linear infinite;
+}
+
+.animate-neon-blue {
+  animation: neonPulse 2s ease-in-out infinite;
 }
 
 .animate-fade-in-up {
@@ -147,4 +198,27 @@
 .delay-300 { animation-delay: 300ms; }
 .delay-400 { animation-delay: 400ms; }
 .delay-500 { animation-delay: 500ms; }
+
+@keyframes popupBorderGlow {
+  0%, 100% { border-color: rgba(59,130,246,0.3); box-shadow: 0 0 10px rgba(59,130,246,0.15), 0 0 20px rgba(59,130,246,0.05); }
+  50% { border-color: rgba(59,130,246,0.7); box-shadow: 0 0 20px rgba(59,130,246,0.35), 0 0 40px rgba(59,130,246,0.15), 0 0 60px rgba(59,130,246,0.05); }
+}
+
+@keyframes slideUpReveal {
+  0% { opacity: 0; transform: translateY(30px) scale(0.97); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes shimmerBorder {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.animate-popup-glow {
+  animation: popupBorderGlow 3s ease-in-out infinite;
+}
+
+.animate-slide-reveal {
+  animation: slideUpReveal 0.5s ease-out both;
+}
 
